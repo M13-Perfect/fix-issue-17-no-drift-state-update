@@ -50,7 +50,7 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
   // Create .context directory
   const spin = spinner('Creating .context/ directory...');
   await ensureDir(contextDir);
-  spin.stop('✓ Created .context/ directory');
+  spin.stop('Created .context/ directory');
 
   // Parse CLAUDE.md if requested
   let claudeData: ClaudeMdData | undefined;
@@ -63,7 +63,7 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
       const claudeSpin = spinner(`Parsing ${typeof options.fromClaudeMd === 'string' ? options.fromClaudeMd : 'CLAUDE.md'}...`);
       try {
         claudeData = await parseClaudeMd(claudeMdPath);
-        claudeSpin.stop('✓ Parsed CLAUDE.md');
+        claudeSpin.stop('Parsed CLAUDE.md');
       } catch (error) {
         claudeSpin.stop();
         logger.error(`Failed to parse CLAUDE.md: ${error}`);
@@ -88,7 +88,7 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
       // no previous project.json
     }
     await writeJSON(join(contextDir, CONTEXT_FILES.PROJECT), project);
-    projectSpin.stop('✓ Generated project.json');
+    projectSpin.stop('Generated project.json');
   } catch (error) {
     projectSpin.stop();
     logger.error(`Failed to generate project.json: ${error}`);
@@ -102,7 +102,7 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
       mergeStackData(stack, claudeData);
     }
     await writeJSON(join(contextDir, CONTEXT_FILES.STACK), stack);
-    stackSpin.stop('✓ Generated stack.json');
+    stackSpin.stop('Generated stack.json');
   } catch (error) {
     stackSpin.stop();
     logger.error(`Failed to generate stack.json: ${error}`);
@@ -117,7 +117,7 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
       mergeArchitectureData(architecture, claudeData);
     }
     await writeJSON(join(contextDir, CONTEXT_FILES.ARCHITECTURE), architecture);
-    archSpin.stop('✓ Generated architecture.json');
+    archSpin.stop('Generated architecture.json');
   } catch (error) {
     archSpin.stop();
     logger.error(`Failed to generate architecture.json: ${error}`);
@@ -131,7 +131,7 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
     const stateManager = new StateManager(contextDir);
     trackMapFields(stateManager, map, map);
     stateManager.save();
-    mapSpin.stop(`✓ Generated map.json (${map.stats.files} files, ${map.stats.modules} modules)`);
+    mapSpin.stop(`Generated map.json (${map.stats.files} files, ${map.stats.modules} modules)`);
   } catch (error) {
     mapSpin.stop();
     logger.error(`Failed to generate map.json: ${error}`);
@@ -145,7 +145,7 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
       mergeConstraintsData(constraints, claudeData);
     }
     await writeJSON(join(contextDir, CONTEXT_FILES.CONSTRAINTS), constraints);
-    constraintsSpin.stop('✓ Generated constraints.json');
+    constraintsSpin.stop('Generated constraints.json');
   } catch (error) {
     constraintsSpin.stop();
     logger.error(`Failed to generate constraints.json: ${error}`);
@@ -154,21 +154,21 @@ export async function initContext(rootDir: string, options: InitOptions = {}): P
   // Decisions and changelog are never inferred: keep them on --force
   const decisionsPath = join(contextDir, CONTEXT_FILES.DECISIONS);
   if (await fileExists(decisionsPath)) {
-    logger.success('✓ Kept existing decisions.json');
+    logger.success('Kept existing decisions.json');
   } else {
     await writeJSON(decisionsPath, { decisions: [] });
-    logger.success('✓ Created decisions.json');
+    logger.success('Created decisions.json');
   }
 
   const changelogPath = join(contextDir, CONTEXT_FILES.CHANGELOG);
   if (await fileExists(changelogPath)) {
-    logger.success('✓ Kept existing changelog.md');
+    logger.success('Kept existing changelog.md');
   } else {
     await writeMarkdown(changelogPath, '# Changelog\n\n');
-    logger.success('✓ Created changelog.md');
+    logger.success('Created changelog.md');
   }
   
-  logger.success('🎉 Prelude context initialized successfully!');
+  logger.success('Prelude context initialized successfully!');
   if (claudeData) {
     logger.info('  (enriched with CLAUDE.md data)');
   }

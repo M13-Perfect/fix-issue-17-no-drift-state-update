@@ -109,8 +109,8 @@ export function registerShareCommand(cli: CAC) {
         spin.stop();
         
         if (copied) {
-          logger.success('✓ Context copied to clipboard!');
-          logger.info('📋 Ready to paste into your AI chat\n');
+          logger.success('Context copied to clipboard!');
+          logger.info('Ready to paste into your AI chat\n');
           
           // Show preview
           const lines = content.split('\n');
@@ -125,7 +125,7 @@ export function registerShareCommand(cli: CAC) {
           console.log(`\n${lines.length} lines | ${content.length} characters`);
         } else {
           const os = platform();
-          logger.warn('⚠ Clipboard tool not found');
+          logger.warn('Clipboard tool not found');
           
           if (os === 'linux') {
             logger.info('\nInstall xclip or xsel:');

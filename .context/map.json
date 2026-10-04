@@ -2,10 +2,10 @@
   "$schema": "https://adjective.us/prelude/schemas/v1/map.schema.json",
   "version": "1.0.0",
   "stats": {
-    "files": 72,
+    "files": 73,
     "modules": 11,
-    "edges": 215,
-    "unresolvedImports": 5
+    "edges": 216,
+    "unresolvedImports": 6
   },
   "modules": [
     {
@@ -382,6 +382,7 @@
       "tests": [
         "tests/diff.test.ts",
         "tests/init.test.ts",
+        "tests/log-symbols.test.ts",
         "tests/mcp-workspace.test.ts"
       ]
     },
@@ -587,7 +588,7 @@
         {
           "file": "src/core/merger.ts",
           "lang": "ts",
-          "lines": 503,
+          "lines": 505,
           "exports": [
             "MergeResult",
             "MergeChange",
@@ -1140,7 +1141,7 @@
     {
       "path": "tests",
       "purpose": "Tests",
-      "fileCount": 16,
+      "fileCount": 17,
       "files": [
         {
           "file": "tests/context-dir.test.ts",
@@ -1216,9 +1217,18 @@
           "isTest": true
         },
         {
+          "file": "tests/log-symbols.test.ts",
+          "lang": "ts",
+          "lines": 112,
+          "imports": [
+            "src/commands/init.ts"
+          ],
+          "isTest": true
+        },
+        {
           "file": "tests/map-merge.test.ts",
           "lang": "ts",
-          "lines": 125,
+          "lines": 137,
           "imports": [
             "src/core/merger.ts",
             "src/core/state-manager.ts",
@@ -1239,7 +1249,7 @@
         {
           "file": "tests/mcp-server.test.ts",
           "lang": "ts",
-          "lines": 305,
+          "lines": 317,
           "imports": [
             "src/core/merger.ts",
             "src/core/state-manager.ts",

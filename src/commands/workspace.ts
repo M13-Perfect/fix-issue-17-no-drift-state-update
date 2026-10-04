@@ -45,7 +45,7 @@ async function workspaceAdd(path: string | undefined, alias?: string): Promise<v
   const entry = await addProject(path, alias);
   const index = await refreshWorkspaceIndex();
   const indexed = index.projects.find(p => p.path === entry.path);
-  logger.success(`✓ Registered ${indexed ? formatProjectListLine(indexed) : entry.name}`);
+  logger.success(`Registered ${indexed ? formatProjectListLine(indexed) : entry.name}`);
   logger.info('Serve it: prelude serve --workspace');
 }
 
@@ -55,7 +55,7 @@ async function workspaceRemove(key: string | undefined): Promise<void> {
     throw new Error(`No registered project matches "${key}". Run \`prelude workspace list\`.`);
   }
   await refreshWorkspaceIndex();
-  logger.success(`✓ Removed ${key}`);
+  logger.success(`Removed ${key}`);
 }
 
 async function workspaceList(): Promise<void> {
@@ -73,7 +73,7 @@ async function workspaceIndex(): Promise<void> {
   const index = await refreshWorkspaceIndex();
   const missing = index.projects.filter(p => p.missing).length;
   const mapped = index.projects.filter(p => p.hasMap).length;
-  logger.success(`✓ Indexed ${index.projects.length} project(s): ${mapped} with a map${missing ? `, ${missing} missing` : ''}`);
+  logger.success(`Indexed ${index.projects.length} project(s): ${mapped} with a map${missing ? `, ${missing} missing` : ''}`);
   logger.info(`Index: ${workspaceIndexPath()}`);
 }
 

@@ -6,7 +6,6 @@
 
 - MCP tool annotations: the read tools (`prelude_compact`, `prelude_locate`, `prelude_map`, `prelude_query`, `prelude_status`, `prelude_projects`) declare `readOnlyHint`, and the write tools declare that they are non-destructive, so clients can skip or soften approval prompts.
 - `mcpName` in `package.json` and a `server.json` for the MCP registry.
-
 - `LICENSE` file (MIT). The package declared MIT but shipped no license text.
 - CI workflow: lint, build, and tests on Node 20, 22, and 24.
 - `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue and pull request templates, and `schemas/README.md`.
@@ -16,6 +15,7 @@
 ### Fixed
 
 - Removed unused code flagged by lint; CI is warning-free.
+- Status lines printed two symbols: one from `log-symbols` and one from the message text (`✔ ✓ Created .context/`, `ℹ ℹ️  Run \`prelude export\``). The logger already prefixes every level with a glyph, so the redundant glyph is gone from all 36 affected messages across `init`, `update`, `export`, `share`, `watch`, `workspace`, and `decision`.
 - The GitHub Action and this repo's update workflow no longer open a pull request when the only change is refreshed timestamps in `.context/.prelude/state.json`.
 - `prelude diff` no longer reports a `hubs` change whose `Old` and `New` lists are identical. The hub comparison reads the full list but the change record truncated both to the first five files, so a change below the fifth hub was reported without showing what changed.
 

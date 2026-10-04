@@ -22,7 +22,7 @@ export function registerWatchCommand(cli: CAC) {
       if (options.once) {
         logger.watch('Watching for changes (will exit after first update)...');
         await watchOnce(rootDir);
-        logger.success('✓ Context updated');
+        logger.success('Context updated');
         process.exit(0);
       }
       
@@ -32,7 +32,7 @@ export function registerWatchCommand(cli: CAC) {
       const watcher = createWatcher(
         rootDir,
         (files, events) => {
-          logger.info(`\n📝 Detected ${files.length} change(s):`);
+          logger.info(`\nDetected ${files.length} change(s):`);
           
           if (options.verbose) {
             events.forEach(event => {
@@ -50,7 +50,7 @@ export function registerWatchCommand(cli: CAC) {
           });
           
           if (updatedFiles.size > 0) {
-            logger.success(`✓ Updated: ${Array.from(updatedFiles).join(', ')}`);
+            logger.success(`Updated: ${Array.from(updatedFiles).join(', ')}`);
           } else {
             logger.info('No context updates needed');
           }
@@ -62,7 +62,7 @@ export function registerWatchCommand(cli: CAC) {
       process.on('SIGINT', async () => {
         logger.info('\n\nStopping watcher...');
         await watcher.close();
-        logger.success('✓ Watcher stopped');
+        logger.success('Watcher stopped');
         process.exit(0);
       });
     });
