@@ -24,20 +24,30 @@ jobs:
         with:
           version: 11
 
-      - name: Setup Node.js
+      # pnpm 11 needs Node >= 22.13, so install with Node 22 and then switch
+      # to the matrix version to lint, build and test.
+      - name: Setup Node.js for install
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "22"
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
       - name: Lint
-        run: pnpm lint
+        run: node_modules/.bin/eslint .
 
       - name: Build
-        run: pnpm build
+        run: node_modules/.bin/tsc
 
       - name: Test
-        run: pnpm exec vitest run
+        run: node_modules/.bin/vitest run
+
+      - name: Smoke test the built CLI
+        run: node dist/bin/prelude.js diff --check

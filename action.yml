@@ -58,7 +58,8 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        if git diff --quiet .context/; then
+        # Ignore .context/.prelude: update refreshes its timestamps on every run
+        if git diff --quiet -- .context/ ':(exclude).context/.prelude'; then
           echo "changed=false" >> "$GITHUB_OUTPUT"
           echo "No changes detected in .context/"
         else

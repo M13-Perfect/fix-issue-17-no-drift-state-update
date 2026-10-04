@@ -10,6 +10,10 @@
 - `bench/locate-bench.ts`: replays a repository's git history as a retrieval task to measure `prelude locate` against a ranked-grep baseline.
 - The GitHub Action can be pinned as `adjective-rob/prelude@v1`.
 
+### Fixed
+
+- The GitHub Action and this repo's update workflow no longer open a pull request when the only change is refreshed timestamps in `.context/.prelude/state.json`.
+
 ### Changed
 
 - README rewritten around the code map, `locate`, the MCP workspace, and CI drift checks. Fixed dead links and the stated Node.js requirement (>= 20.19).

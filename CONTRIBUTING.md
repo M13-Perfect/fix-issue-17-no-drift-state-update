@@ -4,7 +4,7 @@ Thanks for helping. Prelude is small on purpose: regex heuristics, no AST parser
 
 ## Setup
 
-Requires Node.js >= 20.19 and pnpm.
+Development requires Node.js >= 22.13 and pnpm 11. (The published package runs on Node.js >= 20.19, and CI tests it there.)
 
 ```bash
 git clone https://github.com/adjective-rob/prelude.git

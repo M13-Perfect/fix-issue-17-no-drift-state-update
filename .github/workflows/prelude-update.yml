@@ -66,10 +66,23 @@ jobs:
       - name: Install prelude-context
         run: npm install -g prelude-context
 
+      # `prelude update` refreshes timestamps in .context/.prelude/state.json
+      # even when nothing changed, so only run it when there is real drift.
+      - name: Check for drift
+        id: drift
+        run: |
+          if prelude diff --check; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run prelude update
+        if: steps.drift.outputs.changed == 'true'
         run: prelude update
 
       - name: Create Pull Request
+        if: steps.drift.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           commit-message: "chore: update .context/ via Prelude"
