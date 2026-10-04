@@ -114,6 +114,18 @@ describe('ContextMerger.mergeMap', () => {
     expect(result.changes[0]).toMatchObject({ field: 'hubs', type: 'modified' });
   });
 
+  it('shows a hub change that lands past the fifth file', () => {
+    const modules = [mod('src', ['src/a.ts'])];
+    const before = Array.from({ length: 8 }, (_, i) => `src/h${i}.ts`);
+    const after = [...before, 'src/h8.ts'];
+    const result = merger.mergeMap(map(modules, before), map(modules, after));
+    expect(result.changes).toEqual([
+      expect.objectContaining({ field: 'hubs', type: 'modified', newValue: after }),
+    ]);
+    const [change] = result.changes;
+    expect(change.oldValue).not.toEqual(change.newValue);
+  });
+
   it('ignores rank churn', () => {
     const existing = map([mod('src', ['src/a.ts'])], ['src/a.ts']);
     const inferred = map([mod('src', ['src/a.ts'])], ['src/a.ts']);
