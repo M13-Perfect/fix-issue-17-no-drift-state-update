@@ -32,7 +32,13 @@
     "codebase",
     "prelude",
     "machine-readable",
-    "developer-tools"
+    "developer-tools",
+    "mcp",
+    "model-context-protocol",
+    "agents-md",
+    "claude",
+    "cursor",
+    "codebase-map"
   ],
   "author": "Rob Hocking <rob@useadjective.com>",
   "repository": {

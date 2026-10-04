@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `LICENSE` file (MIT). The package declared MIT but shipped no license text.
+- CI workflow: lint, build, and tests on Node 20, 22, and 24.
+- `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue and pull request templates, and `schemas/README.md`.
+- `bench/locate-bench.ts`: replays a repository's git history as a retrieval task to measure `prelude locate` against a ranked-grep baseline.
+- The GitHub Action can be pinned as `adjective-rob/prelude@v1`.
+
+### Changed
+
+- README rewritten around the code map, `locate`, the MCP workspace, and CI drift checks. Fixed dead links and the stated Node.js requirement (>= 20.19).
+
 ## 1.9.0 — 2026-09-22
 
 Prelude now tells an agent *where to look*, not just what a project is, and serves every codebase on the machine from one MCP server.

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/adjective-rob/prelude/discussions
+    about: Ask how to use Prelude or float an idea before writing it up

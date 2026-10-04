@@ -2,9 +2,9 @@
   "$schema": "https://adjective.us/prelude/schemas/v1/map.schema.json",
   "version": "1.0.0",
   "stats": {
-    "files": 71,
-    "modules": 10,
-    "edges": 214,
+    "files": 72,
+    "modules": 11,
+    "edges": 217,
     "unresolvedImports": 5
   },
   "modules": [
@@ -17,6 +17,26 @@
           "lang": "js",
           "lines": 28
         }
+      ]
+    },
+    {
+      "path": "bench",
+      "purpose": "Retrieval benchmark for prelude locate",
+      "fileCount": 1,
+      "files": [
+        {
+          "file": "bench/locate-bench.ts",
+          "lang": "ts",
+          "lines": 224,
+          "imports": [
+            "src/core/locate.ts",
+            "src/core/map-scanner.ts",
+            "src/core/source-scanner.ts"
+          ]
+        }
+      ],
+      "dependsOn": [
+        "src/core"
       ]
     },
     {
@@ -499,8 +519,8 @@
             "src/schema/index.ts",
             "src/utils/fs.ts"
           ],
-          "importedBy": 2,
-          "rank": 0.08
+          "importedBy": 3,
+          "rank": 0.12
         },
         {
           "file": "src/core/map-annotate.ts",
@@ -561,8 +581,8 @@
             "src/core/vocab.ts",
             "src/schema/index.ts"
           ],
-          "importedBy": 3,
-          "rank": 0.12
+          "importedBy": 4,
+          "rank": 0.16
         },
         {
           "file": "src/core/merger.ts",
@@ -626,8 +646,8 @@
             "src/constants.ts",
             "src/utils/fs.ts"
           ],
-          "importedBy": 2,
-          "rank": 0.08
+          "importedBy": 3,
+          "rank": 0.12
         },
         {
           "file": "src/core/state-manager.ts",
@@ -734,6 +754,7 @@
         "src/utils"
       ],
       "dependedOnBy": [
+        "bench",
         "src/commands",
         "src/mcp"
       ],
@@ -1357,6 +1378,18 @@
       ]
     },
     {
+      "file": "src/core/map-scanner.ts",
+      "importedBy": 4,
+      "rank": 0.16,
+      "exports": [
+        "isTestFile",
+        "MapLang",
+        "MapFile",
+        "MapModule",
+        "MapHub"
+      ]
+    },
+    {
       "file": "src/core/merger.ts",
       "importedBy": 4,
       "rank": 0.16,
@@ -1401,6 +1434,18 @@
       ]
     },
     {
+      "file": "src/core/locate.ts",
+      "importedBy": 3,
+      "rank": 0.12,
+      "exports": [
+        "LocateHit",
+        "LocateOptions",
+        "tokenize",
+        "locateInMap",
+        "loadLocateContext"
+      ]
+    },
+    {
       "file": "src/core/map-format.ts",
       "importedBy": 3,
       "rank": 0.12,
@@ -1413,18 +1458,6 @@
       ]
     },
     {
-      "file": "src/core/map-scanner.ts",
-      "importedBy": 3,
-      "rank": 0.12,
-      "exports": [
-        "isTestFile",
-        "MapLang",
-        "MapFile",
-        "MapModule",
-        "MapHub"
-      ]
-    },
-    {
       "file": "src/core/query-engine.ts",
       "importedBy": 3,
       "rank": 0.12,
@@ -1434,18 +1467,6 @@
         "ContextType",
         "VALID_TYPES",
         "QueryOptions"
-      ]
-    },
-    {
-      "file": "src/core/workspace.ts",
-      "importedBy": 3,
-      "rank": 0.12,
-      "exports": [
-        "loadWorkspace",
-        "saveWorkspace",
-        "findProject",
-        "addProject",
-        "removeProject"
       ]
     }
   ]

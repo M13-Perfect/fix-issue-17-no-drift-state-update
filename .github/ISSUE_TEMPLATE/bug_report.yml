@@ -1,0 +1,42 @@
+name: Bug report
+description: Something Prelude did wrong, including wrong or missing inference
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Prelude version
+      description: Output of `prelude --version`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Node.js version and OS
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: prelude update
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Output, error text, or the part of the `.context/` file that is wrong
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Project shape
+      description: For inference bugs, the manifest (package.json, pyproject.toml, Cargo.toml, go.mod) and directory layout, or a link to a public repo that reproduces it

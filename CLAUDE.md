@@ -49,6 +49,7 @@ src/schema/                 Zod schemas defining the .context/ file types (incl.
 schemas/                    JSON Schema files (published to adjective.us, used for validation)
 src/utils/                  fs helpers, logging, timestamps, package version
 src/constants.ts            File names, watch patterns, ignore patterns
+bench/locate-bench.ts       Retrieval benchmark for locate: git history as queries, ranked grep as baseline (run with tsx)
 ```
 
 ## Key data flow

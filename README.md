@@ -1,381 +1,151 @@
 # Prelude
 
-**The open standard for machine-readable codebase context.**
+**A committed, machine-readable map of your codebase, so AI agents know what the project is and where to look.**
 
-Prelude transforms your codebase into structured, AI-optimized context that makes working with LLMs 10x more effective.
+[![npm version](https://img.shields.io/npm/v/prelude-context.svg)](https://www.npmjs.com/package/prelude-context)
+[![CI](https://github.com/adjective-rob/prelude/actions/workflows/ci.yml/badge.svg)](https://github.com/adjective-rob/prelude/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node >= 20.19](https://img.shields.io/badge/node-%3E%3D20.19-brightgreen.svg)](https://nodejs.org)
 
-[![npm version](https://badge.fury.io/js/prelude-context.svg)](https://www.npmjs.com/package/prelude-context)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Agents spend most of their tokens on an unfamiliar codebase in a loop of grep, read, grep again. Prelude scans the project once and writes a small set of JSON files to `.context/`: the stack, the architecture, the constraints, the decisions, and a code map of every module, its exports, and what imports what. You commit those files. Every agent session after that starts from them, through an MCP server, a generated `CLAUDE.md` / `AGENTS.md`, or plain stdout.
 
----
+No embeddings, no server to host, no network calls. Regex heuristics over TypeScript/JavaScript, Python, Go, and Rust.
 
-## Multi-project workspace
+![Terminal: prelude init, then prelude locate returning ranked files with reasons](https://raw.githubusercontent.com/adjective-rob/prelude/main/.github/assets/demo.svg)
 
-Register each codebase once, register Prelude once in your agent harness, and every agent session on the machine can see all of your projects: what each one is, how they relate, and where to look inside any of them.
-
-Once per repo:
+## Quick start
 
 ```bash
-cd ~/code/backend  && prelude init && prelude workspace add .
-cd ~/code/frontend && prelude init && prelude workspace add .
+cd your-project
+npx prelude-context init        # writes .context/
 ```
 
-Once per machine:
+Or install it, which gives you the `prelude` command used in the rest of this README:
 
 ```bash
+npm install -g prelude-context
+prelude init
+```
+
+Then ask it where to look:
+
+```bash
+prelude locate preserve manual edits during update --limit 3
+```
+
+```
+1. src/core/state-manager.ts  ·  src/core (Core business logic)  ·  score 13
+   exports: StateManager
+   why: decision: Manual edits are sacred, matches all terms
+2. src/core/merger.ts  ·  src/core (Core business logic)  ·  score 13
+   exports: MergeResult, MergeChange, ContextMerger, trackMapFields
+   why: decision: Manual edits are sacred, matches all terms
+3. src/commands/update.ts  ·  src/commands (Command handlers)  ·  score 9
+   exports: UpdateOptions, update
+   why: export update, file update
+```
+
+That is real output from this repository, which keeps its own [`.context/`](./.context) committed. Browse it to see what Prelude writes.
+
+Requires Node.js >= 20.19.
+
+## What you get
+
+```
+your-project/
+└── .context/
+    ├── project.json        what the project is
+    ├── stack.json          language, runtime, frameworks, tooling
+    ├── architecture.json   type, patterns, directories, entry points, routes
+    ├── constraints.json    rules and preferences
+    ├── decisions.json      architecture decisions and their rationale
+    ├── map.json            modules, exports, import graph, hub files
+    ├── changelog.md        project timeline
+    └── .prelude/           state: which fields were inferred, which you edited
+```
+
+Commit `.context/`. Gitignore `.context/*.session.json`.
+
+`prelude compact` prints the whole thing as one dense line per section, sized for a system prompt (a few hundred tokens for this repo):
+
+```
+[project] prelude-context | The open standard for expressing and maintaining machine-readable context about a codebase
+[stack] TypeScript/JavaScript Node.js >=20.19.0 | pnpm | testing: Vitest
+[arch] type=cli | patterns: Utility modules | entry: bin/prelude.ts | dirs: bin (Executable entry points), src/commands (Command handlers), src/core (Core business logic), src/mcp (MCP server), ...
+[decisions] Manual edits are sacred (accepted); Regex heuristics, not AST parsers (accepted); Schemas are the contract (accepted); ...
+[map] hubs: src/utils/fs.ts(25), src/runtime/context.ts(20), src/schema/index.ts(18), ... | src/core (Core business logic): state-manager.ts, infer.ts, map-scanner.ts +15 | ...
+```
+
+## Why not just write a CLAUDE.md or AGENTS.md?
+
+Keep them. Prelude generates both (`prelude export --format claude-md`, `--format agents-md`) and can bootstrap from one you already have (`prelude init --from-claude-md`). The difference is what sits underneath:
+
+- **It doesn't rot silently.** A hand-written context file is correct on the day it is written. `prelude diff --check` exits 1 when the committed context no longer matches the code, so CI catches the drift.
+- **It is structured.** JSON with a published schema, so tools can query one section, one directory, or one module instead of loading a whole markdown file.
+- **It answers "where".** The code map and `prelude locate` turn a task phrase into a short list of files with the reason each was picked. A prose file can't do that.
+- **Your edits survive.** Prelude tracks which fields it inferred and which you wrote. `prelude update` refreshes the first kind and never touches the second.
+- **It spans projects.** Register several repos once and a single MCP server answers for all of them, including how they relate.
+- **It isn't tied to one tool.** The same files feed Claude Code, Cursor, Codex, Claude Desktop, or anything that reads JSON.
+
+### How it relates to other approaches
+
+- **In-session repo maps** (Aider's, for example) are computed when the session starts and discarded when it ends. Prelude's map is a file: diffable in a pull request, correctable by hand, shared by the whole team.
+- **Hosted code search and indexing services** are more powerful retrieval, and they are a service to run or pay for. Prelude is static files and a local CLI.
+- **Embedding-based retrieval** finds semantic matches Prelude's keyword scoring will miss. Prelude's results are deterministic and explain themselves, and they cost nothing to produce.
+
+## Use it from an agent (MCP)
+
+Prelude runs as an [MCP](https://modelcontextprotocol.io/) server over stdio.
+
+### One project
+
+```bash
+cd your-project
+prelude mcp-config --client claude-code     # prints the command to register the server
+```
+
+Other clients: `--client cursor`, `--client codex`, `--client claude-desktop`. To start the server by hand: `prelude serve --root /path/to/project`.
+
+| Tool | What the agent gets |
+|------|-------------|
+| `prelude_compact` | The token-budgeted overview (about 800 tokens by default), including the `[map]` line |
+| `prelude_locate` | The files most relevant to a task phrase, with reasons. Meant to be called before grepping |
+| `prelude_map` | Hubs and modules, one module in detail, or one file's exports and importers |
+| `prelude_query` | Context filtered by topic, directory scope, or type |
+| `prelude_record_decision` | Appends a decision to `decisions.json` so later sessions inherit it |
+| `prelude_annotate_module` | Corrects a module's purpose or adds notes in `map.json`; never overwritten by update |
+| `prelude_status` | Which context files exist |
+
+Resources: `prelude://context/full`, `prelude://context/compact`, `prelude://context/map`, and `prelude://context/{type}` for a single file.
+
+### Every project on the machine
+
+Register each codebase once, register Prelude once in your agent harness, and every session can see all of your projects: what each one is, how they relate, and where to look inside any of them.
+
+```bash
+# once per repo
+cd ~/code/backend  && prelude init && prelude workspace add .
+cd ~/code/frontend && prelude init && prelude workspace add .
+
+# once per machine
 prelude mcp-config --workspace --client claude-code
 # prints:  claude mcp add --scope user prelude -- prelude serve --workspace
 ```
 
-Then, from any agent session:
+In workspace mode every tool takes an optional `project`, and three more tools appear:
 
 | Agent call | What it gets back |
 |---|---|
 | `prelude_projects` | One block per project: purpose, stack, entry points, API surface, hub files, related projects |
-| `prelude_compact(project="backend")` | The ~800-token overview, including the `[map]` line |
-| `prelude_locate(query="billing checkout", project="backend")` | The handful of files to read, with reasons. Omit `project` to search every project |
-| `prelude_map(project="backend", module="app/routers")` | One module's purpose, dependencies, tests, and files with exports |
-| `prelude_record_decision(project="backend", title=..., rationale=...)` | Appended to that project's `.context/decisions.json` |
-| `prelude_link_projects(from="frontend", to="backend", relation="consumes", contract="REST /api/v1, JWT bearer")` | Written to frontend's `project.json` |
-| `prelude_annotate_module(project=..., path=..., purpose=..., notes=...)` | Corrects the map; never overwritten by `prelude update` |
+| `prelude_locate(query="billing checkout")` | Searches every project when `project` is omitted |
+| `prelude_link_projects(from="frontend", to="backend", relation="consumes", contract="REST /api/v1, JWT bearer")` | Records the relationship in frontend's `project.json` |
 | `prelude_workspace_refresh` | Rebuilds the workspace index |
 
-`prelude workspace list | index | status | remove <name>` manage the registry at `~/.prelude/` (override with `PRELUDE_HOME`). Other clients: `--client cursor`, `--client codex`, `--client claude-desktop`.
+`prelude workspace list | index | status | remove <name>` manage the registry at `~/.prelude/` (override with `PRELUDE_HOME`).
 
----
+## Keep it honest in CI
 
-## Why Prelude?
-
-Every time you start a new conversation with an AI assistant, you're forced to explain:
-- What stack you're using
-- How your codebase is organized  
-- What patterns and constraints you follow
-- What decisions have been made
-
-**Prelude solves this.**
-
-Instead of repeating yourself, run `prelude export` and get a comprehensive, AI-optimized context document that captures:
-
-- ✅ Your technology stack
-- ✅ Project architecture and patterns
-- ✅ Development constraints and preferences
-- ✅ Key decisions and their rationale
-- ✅ Recent changes and work sessions
-
-## Quick Start
-
-```bash
-# Install globally
-npm install -g prelude-context
-
-# Initialize in your project
-cd your-project
-prelude init
-
-# Generate AI-optimized context
-prelude export
-```
-
-The export is automatically copied to your clipboard - just paste it into Claude, ChatGPT, or any LLM!
-
----
-
-## Example Output
-
-Here's what Prelude generates for a Next.js monorepo:
-
-```markdown
-# Project Context
-> Generated by Prelude
-
-## 📋 Project Overview
-**Name:** lucem-monorepo
-**Description:** Universal operating system for verified work
-**Version:** 1.0.0
-
-## 🔧 Technology Stack
-**Language:** TypeScript/JavaScript
-**Runtime:** Node.js >=18.0.0
-**Package Manager:** pnpm
-**Frameworks:** Next.js, React
-**Database:** Supabase, PostgreSQL
-**ORM:** Drizzle ORM
-
-## 🏗️ Architecture
-**Type:** monorepo
-**Patterns:** Component-based architecture, Server Components
-**Key Directories:**
-- apps/web - Next.js application
-- packages/db - Database schemas and migrations
-
-## ⚠️ Constraints & Preferences
-**Must Use:**
-- Turborepo for monorepo management
-- TypeScript strict mode
-- Server Components by default
-```
-
-[See full example →](./examples/nextjs-monorepo)
-
----
-
-## What Makes Prelude Different?
-
-| Feature | Prelude | Manual Context | Other Tools |
-|---------|---------|----------------|-------------|
-| Automatic inference | ✅ | ❌ | ⚠️ |
-| Standards-based | ✅ | ❌ | ❌ |
-| Human-readable | ✅ | ✅ | ❌ |
-| Machine-optimized | ✅ | ❌ | ✅ |
-| Version controlled | ✅ | ⚠️ | ❌ |
-| Zero configuration | ✅ | N/A | ❌ |
-| Preserves manual edits | ✅ | ✅ | ❌ |
-
----
-
-## Core Commands
-
-### `prelude init`
-Analyzes your codebase and creates a `.context/` directory with:
-- `project.json` - Project metadata
-- `stack.json` - Technology stack
-- `architecture.json` - Architecture patterns and structure
-- `constraints.json` - Development rules and preferences
-- `decisions.json` - Architecture decision records
-- `changelog.md` - Project timeline
-
-All files follow the [Prelude specification](https://github.com/adjective-rob/prelude/blob/main/spec.md) and include JSON Schema validation.
-
-**Bootstrap from an existing CLAUDE.md:**
-```bash
-prelude init --from-claude-md              # Uses ./CLAUDE.md
-prelude init --from-claude-md docs/AI.md   # Custom path
-```
-
-Prelude parses your CLAUDE.md to extract project info, stack details, architecture, and constraints — then merges that with inference results. Your manual context gets preserved and structured.
-
-### `prelude export`
-Generates a markdown document optimized for LLMs:
-- Combines all context into a single, focused document
-- Automatically copied to clipboard
-- Perfect for starting new AI conversations
-
-**Export formats:**
-```bash
-prelude export                      # Default markdown export
-prelude export --format claude-md   # Generate a CLAUDE.md file
-prelude export --format agents-md   # Generate an AGENTS.md file
-prelude export --format cursorrules # Generate a .cursorrules file
-prelude export --format json        # Structured JSON export
-```
-
-The `claude-md` and `agents-md` formats generate a clean CLAUDE.md / AGENTS.md from your `.context/` data, including a **Read first** list of hub files and a one-line-per-module map. Prelude becomes the source of truth that outputs to whatever format your AI tool expects.
-
-### `prelude validate`
-Validates all `.context/` files against their JSON schemas:
-```bash
-prelude validate
-# project.json — valid
-# stack.json — valid
-# architecture.json — valid
-# constraints.json — valid
-# decisions.json — valid
-# All 5 file(s) passed validation.
-```
-
-Useful for CI pipelines to catch schema drift after manual edits. Exits with code 1 if any file fails.
-
-### `prelude update`
-Re-analyzes your codebase and intelligently updates context:
-```bash
-prelude update
-# Smart merge - preserves manual edits, updates inferred data
-
-prelude update --dry-run
-# Preview changes without applying them
-
-prelude update --force
-# Overwrite everything (except decisions/changelog)
-```
-
-**Key features:**
-- ✅ **Preserves manual edits** - Never loses your customizations
-- ✅ **Shows what changed** - Color-coded diff of updates
-- ✅ **Automatic backups** - Saves history before every update
-- ✅ **Smart merging** - Combines new inferred data with manual edits
-
-### `prelude decision <title>`
-Logs architecture decisions:
-```bash
-prelude decision "Use Drizzle ORM instead of Prisma"
-# Opens editor for you to document the decision and rationale
-```
-
-### `prelude query <topic> [options]`
-Scoped context lookup — search and filter your project context without exporting everything:
-```bash
-prelude query "error handling"              # topic search across everything
-prelude query --scope src/api/              # architecture + constraints for a directory
-prelude query --type constraints            # just constraints
-prelude query "prisma" --type decisions --format json   # combined filters
-prelude query --type stack --max-tokens 500 # budget-capped output
-```
-
-| Flag | Description |
-|------|-------------|
-| `<topic>` | Deep-search keyword across all context files |
-| `--scope <path>` | Filter to architecture/constraints relevant to a directory |
-| `--type <type>` | Return only one context type: `project`, `stack`, `architecture`, `constraints`, `decisions`, or `map` |
-| `--format <md\|json>` | Output format (default: `md`) |
-| `--max-tokens <n>` | Truncate output to fit a token budget |
-
-Output goes to stdout (pipe-friendly), token estimate to stderr. At least one filter (topic, scope, or type) is required.
-
-### `prelude locate <query...>`
-Turns a task phrase into the files most likely relevant, with the reason each was chosen. Keyword scoring over `map.json` exports, paths, module purposes, roles, and decisions that mention files. No embeddings, no network.
-```bash
-prelude locate billing checkout webhook
-prelude locate mcp server tools --limit 3
-prelude locate "query engine" --scope src/core --format json
-```
-
-```
-1. src/mcp/server.ts  ·  src/mcp (MCP server)  ·  score 14
-   exports: createPreludeServer
-   why: path mcp, module: MCP server, export createPreludeServer, file server
-```
-
-| Flag | Description |
-|------|-------------|
-| `--limit <n>` | Maximum files to return (default 8) |
-| `--scope <dir>` | Only consider files under this directory |
-| `--tests` | Include test files (default: only when the query mentions tests) |
-| `--format <text\|json>` | Output format (default: `text`) |
-
-When nothing matches, Prelude prints the hub files as a place to start.
-
-### `prelude annotate <module>`
-Corrects or enriches what `map.json` says about a module. Manual purposes and notes are never overwritten by `prelude update`.
-```bash
-prelude annotate src/core --purpose "Inference, merge, query and export engine"
-prelude annotate src/core --notes "Regex heuristics only, no AST"
-prelude annotate src/core --clear-notes
-```
-
-### `prelude diff [--check]`
-Shows what `prelude update` would change, without writing anything:
-```bash
-prelude diff                  # drift, grouped by file
-prelude diff --all            # also show preserved manual edits
-prelude diff --format json    # { changed, count, changes }
-prelude diff --check          # exit 1 on drift (CI guard)
-```
-
-### `prelude workspace <action>`
-Manages the user-level registry of projects served by `prelude serve --workspace`:
-```bash
-prelude workspace add . --alias backend   # register (requires .context/)
-prelude workspace list                    # one line per project
-prelude workspace index                   # rebuild ~/.prelude/index.json
-prelude workspace status                  # paths, count, index age
-prelude workspace remove backend
-```
-
-### `prelude watch`
-Tracks development sessions:
-```bash
-prelude watch
-# Monitors file changes and logs your work session
-# Press Ctrl+C when done to save the session
-```
-
-### `prelude serve`
-Starts Prelude as an MCP server over stdio transport:
-```bash
-prelude serve                    # Serve context for current directory
-prelude serve --root ~/my-project  # Serve context for a specific project
-prelude serve --workspace        # Serve every registered project
-```
-
-AI tools connect to this server to query your project context programmatically — no clipboard needed.
-
-### `prelude mcp-config`
-Prints the configuration snippet to connect Prelude to your AI tool:
-```bash
-prelude mcp-config --client claude-code      # Default
-prelude mcp-config --client claude-desktop
-prelude mcp-config --client cursor
-prelude mcp-config --client codex
-prelude mcp-config --workspace               # one user-scope server for every project
-```
-
----
-
-## MCP Server Integration
-
-Prelude can run as an [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) server, making your project context directly available to AI tools like Claude Code, Claude Desktop, and Cursor — no copy-paste required.
-
-### Single project (Claude Code)
-
-```bash
-# From your project directory (must have .context/ — run prelude init first)
-prelude mcp-config --client claude-code
-```
-
-This prints the command to register Prelude as an MCP server. Once connected, your AI tools have access to seven tools:
-
-| Tool | Description |
-|------|-------------|
-| `prelude_compact` | Token-efficient overview for prompt injection (~800 tokens), including the `[map]` line |
-| `prelude_locate` | Find the files most relevant to a task phrase, with reasons. Call before grepping |
-| `prelude_map` | Inspect the code map: hubs and modules, one module in detail, or one file's exports and importers |
-| `prelude_query` | Full-power context queries with topic, scope, and type filtering |
-| `prelude_record_decision` | Record an architectural decision in `decisions.json` so future sessions inherit it |
-| `prelude_annotate_module` | Correct a module's purpose or add notes in `map.json`; never overwritten by update |
-| `prelude_status` | Check which context files are available |
-
-And four resources for passive context discovery:
-
-| Resource URI | Description |
-|-------------|-------------|
-| `prelude://context/full` | Complete project context as markdown |
-| `prelude://context/compact` | Token-efficient summary |
-| `prelude://context/map` | The code map (`map.json`) |
-| `prelude://context/{type}` | Individual context files (project, stack, architecture, constraints, decisions, map) |
-
-### Other Clients
-
-```bash
-prelude mcp-config --client claude-desktop
-prelude mcp-config --client cursor
-```
-
-### Manual Setup
-
-Start the server directly:
-
-```bash
-prelude serve --root /path/to/your/project
-```
-
-The server uses stdio transport. Configure your MCP client to run this command.
-
-### `prelude mcp-config [options]`
-
-Prints the configuration snippet for connecting Prelude to your AI tool:
-
-```bash
-prelude mcp-config                          # Claude Code (default)
-prelude mcp-config --client claude-desktop   # Claude Desktop
-prelude mcp-config --client cursor           # Cursor
-prelude mcp-config --root /path/to/project   # Specify project root
-```
-
----
-
-## GitHub Action
-
-Prelude ships with a GitHub Action with two modes. **Guard** (`check: "true"`) only runs `prelude diff --check` and fails the job when the committed `.context/` has drifted from the code. **Update** (the default) runs `prelude update` and opens a PR when `.context/` changed. Use both: guard pull requests, update on main.
+The GitHub Action has two modes. **Guard** (`check: "true"`) runs `prelude diff --check` and fails the job when the committed `.context/` has drifted from the code. **Update** (the default) runs `prelude update` and opens a pull request when `.context/` changed. Use both: guard pull requests, update on main.
 
 ```yaml
 # .github/workflows/prelude.yml
@@ -392,105 +162,154 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: adjective-rob/prelude@main
+      - uses: adjective-rob/prelude@v1
         with:
           check: "true"
 
   update:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: adjective-rob/prelude@main
+      - uses: adjective-rob/prelude@v1
 ```
 
-Locally, `prelude diff` prints what `prelude update` would change without writing, and `prelude diff --check` exits 1 on drift (`--format json` for machines, `--all` to include preserved manual edits). See [action.yml](./action.yml) for configuration options.
+See [action.yml](./action.yml) for the inputs (`version`, `args`, `working-directory`, `check`).
 
----
+## Commands
 
-## Use Cases
+| Command | What it does |
+|---|---|
+| `prelude init` | Analyze the project and write `.context/` |
+| `prelude update` | Re-analyze and merge, preserving manual edits |
+| `prelude diff` | Show what `update` would change, without writing |
+| `prelude locate <query>` | Rank the files most relevant to a task phrase |
+| `prelude compact` | One dense line per section, for prompt injection |
+| `prelude query` | Filter context by topic, directory, or type |
+| `prelude export` | Markdown, JSON, `CLAUDE.md`, `AGENTS.md`, or `.cursorrules` |
+| `prelude annotate <module>` | Set a module's purpose or notes in the map |
+| `prelude decision <title>` | Log an architecture decision |
+| `prelude validate` | Check `.context/` files against the JSON Schemas |
+| `prelude workspace <action>` | Manage the multi-project registry |
+| `prelude serve` | Run the MCP server |
+| `prelude mcp-config` | Print the MCP setup for a client |
+| `prelude watch` | Monitor file changes and log a work session |
+| `prelude share` | Copy the context to the clipboard, with a preview |
 
-### 🎯 Starting New Conversations
-Paste your Prelude export to instantly give any LLM full context:
+Run any command with `--help` for its flags.
 
-```
-Here's my project context:
+### `prelude init`
 
-[paste prelude export]
-
-I want to add user authentication. What's the best approach given our stack?
-```
-
-### 🐛 Debugging
-```
-Here's my project context:
-
-[paste prelude export]
-
-I'm seeing this error: [error]
-In file: apps/web/app/api/route.ts
-
-What's likely causing this?
-```
-
-### 🏗️ Architecture Decisions
-```
-Here's my project context:
-
-[paste prelude export]
-
-Should I use Server Actions or API routes for [feature]?
-Consider our existing patterns and constraints.
-```
-
-### 🔍 Scoped Context for AI Agents
 ```bash
-# Feed only relevant context to an AI agent working on a specific directory
-prelude query --scope src/api/ --format json | my-agent
-
-# Quick lookup before asking an LLM about a topic
-prelude query "authentication" --max-tokens 500
+prelude init
+prelude init --from-claude-md              # seed from ./CLAUDE.md
+prelude init --from-claude-md docs/AI.md   # or another file
 ```
 
-### 📚 Onboarding
-Share your `.context/` directory with new team members so they can:
-- Understand the stack instantly
-- Learn architectural patterns
-- See past decisions and rationale
+With `--from-claude-md`, Prelude extracts project info, stack, architecture, and constraints from the markdown and merges them with what it infers.
 
-### 🔄 Keeping Context Fresh
+### `prelude update` and `prelude diff`
+
 ```bash
-# After adding dependencies
-npm install @tanstack/react-query
-prelude update
+prelude update              # smart merge; backs up the previous state first
+prelude update --dry-run    # preview
+prelude update --force      # overwrite everything except decisions and changelog
 
-# After restructuring
-prelude update --dry-run  # Preview changes first
-prelude update            # Apply updates
+prelude diff                # drift, grouped by file
+prelude diff --all          # also show preserved manual edits
+prelude diff --format json  # { changed, count, changes }
+prelude diff --check        # exit 1 on drift
 ```
 
----
+### `prelude locate <query...>`
 
-## The Prelude Format
+Keyword scoring over `map.json` exports, paths, module purposes, architecture roles, and decisions that mention files.
 
-Prelude is an **open standard** - not just a CLI tool. The format is:
-- **Versioned** - Semantic versioning for safe evolution
-- **Validated** - JSON Schema for every file type
-- **Extensible** - Add custom fields as needed
-- **Language-agnostic** - Implement in any language
+```bash
+prelude locate billing checkout webhook
+prelude locate mcp server tools --limit 3
+prelude locate "query engine" --scope src/core --format json
+```
 
-See the [full specification →](./SPEC.md)
+| Flag | Description |
+|------|-------------|
+| `--limit <n>` | Maximum files to return (default 8) |
+| `--scope <dir>` | Only consider files under this directory |
+| `--tests` | Include test files (default: only when the query mentions tests) |
+| `--format <text\|json>` | Output format (default: `text`) |
 
-All schemas are hosted at: `https://adjective.us/prelude/schemas/v1/`
+When nothing matches, Prelude prints the hub files as a place to start.
+
+### `prelude query <topic> [options]`
+
+```bash
+prelude query "error handling"              # topic search across everything
+prelude query --scope src/api/              # architecture + constraints for a directory
+prelude query --type constraints            # just constraints
+prelude query "prisma" --type decisions --format json
+prelude query --type stack --max-tokens 500 # budget-capped output
+```
+
+| Flag | Description |
+|------|-------------|
+| `<topic>` | Keyword searched across all context files |
+| `--scope <path>` | Architecture and constraints relevant to a directory |
+| `--type <type>` | One of `project`, `stack`, `architecture`, `constraints`, `decisions`, `map` |
+| `--format <md\|json>` | Output format (default: `md`) |
+| `--max-tokens <n>` | Truncate output to fit a token budget |
+
+Output goes to stdout and the token estimate to stderr, so it pipes cleanly. At least one of topic, scope, or type is required.
+
+### `prelude export`
+
+```bash
+prelude export                      # markdown, copied to the clipboard
+prelude export --format claude-md   # CLAUDE.md
+prelude export --format agents-md   # AGENTS.md
+prelude export --format cursorrules # .cursorrules
+prelude export --format json        # structured JSON
+```
+
+The `claude-md` and `agents-md` formats include a **Read first** list of hub files and a one-line-per-module map.
+
+### `prelude annotate <module>`
+
+```bash
+prelude annotate src/core --purpose "Inference, merge, query and export engine"
+prelude annotate src/core --notes "Regex heuristics only, no AST"
+prelude annotate src/core --clear-notes
+```
+
+### `prelude decision <title>`
+
+```bash
+prelude decision "Use Drizzle ORM instead of Prisma"   # opens your editor for the rationale
+```
+
+### `prelude validate`
+
+Validates every `.context/` file against its JSON Schema and exits 1 if any fails.
+
+### `prelude workspace <action>`
+
+```bash
+prelude workspace add . --alias backend   # register (requires .context/)
+prelude workspace list
+prelude workspace index                   # rebuild ~/.prelude/index.json
+prelude workspace status
+prelude workspace remove backend
+```
+
+## The format
+
+Prelude is a CLI and a format. The format is specified in [spec.md](./spec.md), with a JSON Schema for every file in [`schemas/`](./schemas/README.md). The schemas ship in the npm package and allow additional properties, so you can add your own fields.
 
 ### The code map: `map.json`
 
-Alongside what a project *is*, Prelude records *where to look*. `prelude init`
-writes `.context/map.json`: every module with a short purpose, each file's
-exports, the resolved internal import graph (TypeScript/JavaScript, Python,
-Go, Rust), and the **hub** files most of the codebase depends on. It is
-deterministic (sorted arrays, no timestamps), so it diffs cleanly in git, and
-hand-edited module `purpose` and `notes` survive `prelude update`.
+Every module with a short purpose, each file's exports, the resolved internal import graph, and the **hub** files most of the codebase depends on. It is deterministic (sorted arrays, no timestamps), so it diffs cleanly in git.
 
 ```json
 {
@@ -509,21 +328,15 @@ hand-edited module `purpose` and `notes` survive `prelude update`.
 }
 ```
 
----
+### Manual edits
 
-## Advanced Usage
-
-### Manual Edits
-The `.context/` files are human-readable JSON. Edit them directly:
+The `.context/` files are plain JSON. Edit them directly:
 
 ```json
 {
-  "$schema": "https://adjective.us/prelude/schemas/v1/constraints.json",
+  "$schema": "https://adjective.us/prelude/schemas/v1/constraints.schema.json",
   "version": "1.0.0",
-  "mustUse": [
-    "TypeScript strict mode",
-    "Server Components by default"
-  ],
+  "mustUse": ["TypeScript strict mode", "Server Components by default"],
   "preferences": [
     {
       "category": "state-management",
@@ -534,161 +347,48 @@ The `.context/` files are human-readable JSON. Edit them directly:
 }
 ```
 
-**Manual edits are preserved** when you run `prelude update` - the smart merge system tracks what's inferred vs. what you've customized.
+`prelude update` keeps what you wrote and refreshes only what it inferred.
 
-### Custom Fields
-Add project-specific fields - the schemas allow additional properties:
+### External context directory
 
-```json
-{
-  "$schema": "https://adjective.us/prelude/schemas/v1/project.json",
-  "version": "1.0.0",
-  "name": "my-app",
-  "customField": "your data",
-  "team": [
-    { "name": "Alice", "role": "Tech Lead" }
-  ]
-}
-```
+Set `PRELUDE_ROOT` to read and write context in a directory outside the project, for repos where you can't or don't want to commit `.context/`.
 
-### Integration
-Use Prelude in your tools:
+## Language support
 
-```typescript
-import { readFileSync } from 'fs';
-import { join } from 'path';
+| | Stack and architecture inference | Code map (exports, imports, hubs) |
+|---|---|---|
+| TypeScript / JavaScript | ✅ `package.json`, monorepos, tsconfig | ✅ including tsconfig `paths` |
+| Python | ✅ `pyproject.toml`, `requirements.txt` | ✅ |
+| Rust | ✅ `Cargo.toml` | ✅ |
+| Go | ✅ `go.mod` | ✅ |
 
-// Read project context
-const project = JSON.parse(
-  readFileSync(join(process.cwd(), '.context/project.json'), 'utf-8')
-);
-
-console.log(`Project: ${project.name}`);
-console.log(`Stack: ${project.stack?.language}`);
-```
-
----
-
-## Requirements
-
-- Node.js >= 18.0.0
-- Git (optional, for tracking changes)
-
----
-
-## Project Structure
-
-```
-your-project/
-├── .context/              # Created by Prelude
-│   ├── project.json      # Project metadata
-│   ├── stack.json        # Technology stack  
-│   ├── architecture.json # Architecture patterns
-│   ├── constraints.json  # Development rules
-│   ├── decisions.json    # Architecture decisions
-│   ├── map.json          # Code map: modules, exports, imports, hubs
-│   ├── changelog.md      # Project timeline
-│   └── .prelude/         # State tracking (gitignore *.session.json)
-│       ├── state.json    # Tracks inferred vs manual fields
-│       └── history/      # Automatic backups
-├── .gitignore            # Add .context/*.session.json
-└── ...
-```
-
-**Note:** Commit `.context/` to version control (except `*.session.json` files).
-
----
+The format itself is language-agnostic. Adding a language to the scanner is a contained change; see [CONTRIBUTING.md](./CONTRIBUTING.md#add-a-language-to-the-code-map).
 
 ## FAQ
 
-### Should I commit `.context/` to git?
-**Yes!** The context is part of your project documentation. Exception: `.context/*.session.json` should be gitignored (it's for local work tracking).
+**Should I commit `.context/`?** Yes. It is project documentation that happens to be machine-readable. Gitignore only `.context/*.session.json`.
 
-### How often should I update the context?
-Run `prelude update` after major changes (new dependencies, restructuring). Run `prelude export` whenever you need fresh context for an AI conversation.
+**How often should I run `prelude update`?** After adding dependencies or restructuring. The GitHub Action does it for you and the guard mode tells you when you forgot.
 
-### What happens to my manual edits?
-They're preserved! Prelude tracks which fields are inferred vs. manually edited. When you run `update`, it only changes auto-detected data while keeping your customizations.
+**What if the inference is wrong?** It will be sometimes; it is heuristics. Edit the JSON or use `prelude annotate`. Your correction is kept on every later update. If the mistake is one Prelude should not make, [open an issue](https://github.com/adjective-rob/prelude/issues/new/choose).
 
-### Can I use this with any LLM?
-Yes! The export format is optimized for Claude, ChatGPT, Gemini, and any text-based AI assistant.
+**Does it send my code anywhere?** No. Inference, `locate`, and the MCP server make no network requests.
 
-### What if my project structure is unusual?
-Prelude's inference is smart but not perfect. Just edit the `.context/` files directly - they're human-readable JSON.
-
-### Does this work with non-JavaScript projects?
-Yes! Prelude has full inference support for **JavaScript/TypeScript**, **Python**, **Rust**, and **Go** — including dependency parsing, framework detection, testing tools, and conventions. The format itself is language-agnostic.
-
----
+**Does it work with any LLM?** Yes. The output is text and JSON.
 
 ## Roadmap
 
-- [x] Smart context updates with manual edit preservation
-- [x] Scoped context query engine (`prelude query`)
-- [x] MCP server for AI tool integration (`prelude serve`)
-- [x] Full inference for Python (pyproject.toml, requirements.txt)
-- [x] Full inference for Rust (Cargo.toml) and Go (go.mod)
-- [x] CLAUDE.md / .cursorrules export (`prelude export --format claude-md`)
-- [x] Bootstrap from CLAUDE.md (`prelude init --from-claude-md`)
-- [x] Schema validation command (`prelude validate`)
-- [x] GitHub Action for automated updates
-- [x] Code map: modules, exports, import graph, hubs (`map.json`)
-- [x] Task-to-file routing (`prelude locate`, `prelude_locate`)
-- [x] Context diff and CI drift guard (`prelude diff --check`)
-- [x] AGENTS.md export
-- [x] Agent write path: decisions, module annotations, project links
-- [x] Multi-project workspace served by one MCP server (`prelude serve --workspace`)
-- [ ] PageRank-weighted ranking
-- [ ] gitignore-aware walking
-- [ ] tree-sitter-backed exports for more languages
-- [ ] Temporal brain layer (learned heuristics from AI tool usage)
+- [ ] gitignore-aware file walking
+- [ ] Graph-weighted ranking for `locate`
+- [ ] More languages in the code map
+- [ ] Learned heuristics from agent usage
 
----
-
-## Design Principles
-
-1. **Human-readable first** - All files are readable JSON/Markdown
-2. **AI-optimized** - Structured for maximum LLM effectiveness  
-3. **Standards-based** - Open spec, not proprietary format
-4. **Zero lock-in** - Edit files manually, use any tool
-5. **Incremental adoption** - Works with partial information
-6. **Preserve intent** - Never lose manual customizations
-
----
-
-## Examples
-
-- [Next.js Monorepo](./examples/nextjs-monorepo) - Turborepo + Drizzle + Supabase
-- [Express API](./examples/express-api) - REST API with PostgreSQL
-- [Vite React App](./examples/vite-react) - Frontend SPA
-
----
+Shipped work is in the [changelog](./CHANGELOG.md). Open items are tracked in [issues](https://github.com/adjective-rob/prelude/issues).
 
 ## Contributing
 
-Areas we'd love help with:
-- Improved inference patterns
-- Support for more languages/frameworks  
-- Example projects
-- Documentation improvements
-- Bug reports and feature requests
-
----
+Contributions are welcome, especially inference fixes for real project layouts, new framework detectors, and new languages for the code map. [CONTRIBUTING.md](./CONTRIBUTING.md) has setup, conventions, and step-by-step recipes for each. Issues labelled [`good first issue`](https://github.com/adjective-rob/prelude/labels/good%20first%20issue) are scoped to be approachable.
 
 ## License
 
-MIT © [Adjective](https://adjective.us)
-
----
-
-## Links
-
-- [Specification](https://github.com/adjective-rob/prelude/blob/main/spec.md)
-- [Schema Documentation](./schemas/README.md)
-- [Examples](./examples/)
-- [NPM Package](https://www.npmjs.com/package/prelude-context)
-- [Issues & Feature Requests](https://github.com/adjective-rob/prelude/issues)
-
----
-
-**Built by [Adjective](https://adjective.us) - Sovereign Software for AI-Native Teams**
+MIT © [Adjective](https://adjective.us). See [LICENSE](./LICENSE).

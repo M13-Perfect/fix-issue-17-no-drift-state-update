@@ -1,0 +1,29 @@
+name: Feature request
+description: A new detector, language, command, or change to the format
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task or project that Prelude doesn't handle well today
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What Prelude should do. For format changes, include the JSON you'd expect to see
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Inference (stack, architecture, constraints)
+        - Code map and locate
+        - MCP server
+        - Workspace
+        - Export formats
+        - Spec and schemas
+        - GitHub Action
+        - Other

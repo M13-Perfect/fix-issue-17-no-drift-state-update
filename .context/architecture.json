@@ -3,13 +3,8 @@
   "version": "1.0.0",
   "directories": [
     {
-      "path": "CLAUDE_TASKS",
-      "fileCount": 3,
-      "purpose": "Background jobs"
-    },
-    {
-      "path": "CLAUDE_TASKS/done",
-      "fileCount": 14
+      "path": "bench",
+      "fileCount": 1
     },
     {
       "path": "bin",
@@ -18,7 +13,7 @@
     },
     {
       "path": "schemas",
-      "fileCount": 9,
+      "fileCount": 10,
       "purpose": "Data schemas"
     },
     {
