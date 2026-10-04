@@ -3,7 +3,6 @@ import { join } from 'path';
 import { createHash } from 'crypto';
 import type { PreludeState, FileState, FieldState } from '../schema/state.js';
 import { createInitialState, trackField } from '../schema/state.js';
-import { ensureDir } from '../utils/fs.js';
 
 
 /**

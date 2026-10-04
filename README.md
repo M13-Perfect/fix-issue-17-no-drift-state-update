@@ -161,7 +161,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: adjective-rob/prelude@v1
         with:
           check: "true"
@@ -173,7 +173,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: adjective-rob/prelude@v1
 ```
 

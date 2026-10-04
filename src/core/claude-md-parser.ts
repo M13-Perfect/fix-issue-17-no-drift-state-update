@@ -376,9 +376,8 @@ function extractConventions(body: string): string[] {
   return conventions;
 }
 
-function extractStackInfo(content: string, sections: Section[]): ClaudeMdData['stack'] | undefined {
+function extractStackInfo(content: string, _sections: Section[]): ClaudeMdData['stack'] | undefined {
   const stack: NonNullable<ClaudeMdData['stack']> = {};
-  const lower = content.toLowerCase();
 
   // Detect language
   const languagePatterns: [RegExp, string][] = [

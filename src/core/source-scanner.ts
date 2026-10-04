@@ -1,6 +1,5 @@
 import { readdir, readFile, stat } from 'fs/promises';
 import { join, relative, basename, dirname, extname } from 'path';
-import { getDirectoryTree } from '../utils/fs.js';
 import { IGNORE_PATTERNS } from '../constants.js';
 
 // --- Exported interfaces ---
@@ -143,18 +142,15 @@ async function collectSourceFiles(rootDir: string): Promise<string[]> {
 async function readFileHead(rootDir: string, file: string): Promise<string | null> {
   try {
     const fullPath = join(rootDir, file);
-    const buf = Buffer.alloc(MAX_READ_BYTES);
     const { createReadStream } = await import('fs');
 
     return await new Promise<string | null>((resolve) => {
       const chunks: Buffer[] = [];
-      let totalBytes = 0;
 
       const stream = createReadStream(fullPath, { end: MAX_READ_BYTES - 1 });
       stream.on('data', (chunk: Buffer | string) => {
         const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
         chunks.push(buf);
-        totalBytes += buf.length;
       });
       stream.on('end', () => {
         const content = Buffer.concat(chunks).toString('utf-8');

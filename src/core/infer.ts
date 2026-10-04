@@ -1,4 +1,4 @@
-import { readdir, stat, readFile } from 'fs/promises';
+import { readdir, readFile } from 'fs/promises';
 import { join, basename, relative } from 'path';
 import { fileExists, readJSON, getDirectoryTree } from '../utils/fs.js';
 import { getCurrentTimestamp } from '../utils/time.js';
@@ -179,7 +179,7 @@ async function scanMonorepoPackages(rootDir: string): Promise<PackageInfo[]> {
           });
         }
       }
-    } catch (error) {
+    } catch {
       // Skip if can't read directory
     }
   }
@@ -198,16 +198,6 @@ function aggregateDependencies(packages: PackageInfo[]): Record<string, string> 
   return allDeps;
 }
 
-async function detectDockerConfig(rootDir: string): Promise<string[]> {
-  const configs: string[] = [];
-  
-  if (await fileExists(join(rootDir, 'Dockerfile'))) configs.push('Dockerfile');
-  if (await fileExists(join(rootDir, 'docker-compose.yml'))) configs.push('Docker Compose');
-  if (await fileExists(join(rootDir, '.dockerignore'))) configs.push('Docker optimized');
-  
-  return configs;
-}
-
 async function detectEnvFiles(rootDir: string): Promise<string[]> {
   const envFiles: string[] = [];
   
@@ -220,35 +210,6 @@ async function detectEnvFiles(rootDir: string): Promise<string[]> {
   }
   
   return envFiles;
-}
-
-async function analyzeGitConfig(rootDir: string): Promise<any> {
-  const gitConfig: any = {};
-  
-  if (await fileExists(join(rootDir, '.git'))) {
-    gitConfig.isGitRepo = true;
-    
-    // Check for common git hooks
-    const hooksDir = join(rootDir, '.git/hooks');
-    if (await fileExists(hooksDir)) {
-      gitConfig.hasHooks = true;
-    }
-  }
-  
-  // Check for GitHub-specific files
-  if (await fileExists(join(rootDir, '.github'))) {
-    gitConfig.github = true;
-    
-    if (await fileExists(join(rootDir, '.github/workflows'))) {
-      gitConfig.githubActions = true;
-    }
-    
-    if (await fileExists(join(rootDir, '.github/CODEOWNERS'))) {
-      gitConfig.hasCodeowners = true;
-    }
-  }
-  
-  return gitConfig;
 }
 
 export async function inferProjectMetadata(rootDir: string): Promise<Project> {
@@ -957,10 +918,6 @@ export async function inferStack(rootDir: string): Promise<Stack> {
         stack.runtime = `Go ${goVersionMatch[1]}`;
       }
 
-      // Parse module path
-      const moduleMatch = goModContent.match(/^module\s+(\S+)/m);
-      const modulePath = moduleMatch?.[1] || '';
-
       // Parse require block
       const allGoMods = new Set<string>();
       const depsRecord: Record<string, string> = {};
@@ -1481,7 +1438,7 @@ export async function inferArchitecture(rootDir: string): Promise<Architecture> 
         architecture.patterns.push('Server Actions');
       }
     }
-  } catch (error) {
+  } catch {
     // Source scanning is best-effort — don't fail inference if it errors
     // The architecture result will just lack source-level fields
   }

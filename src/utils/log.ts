@@ -8,7 +8,7 @@ export const logger = {
   error: (msg: string) => console.log(logSymbols.error, red(msg)),
   debug: (msg: string) => console.log(gray('→'), gray(msg)),
   step: (msg: string) => console.log(cyan('◆'), cyan(msg)),
-  heading: (msg: string) => console.log('\n' + magenta('━'.repeat(50))),
+  heading: (_msg: string) => console.log('\n' + magenta('━'.repeat(50))),
   
   // Custom emojis for Prelude-specific actions
   init: (msg: string) => console.log('🎯', blue(msg)),
