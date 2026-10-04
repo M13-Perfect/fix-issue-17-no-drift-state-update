@@ -50,7 +50,7 @@ export function registerDecisionCommand(cli: CAC) {
         tags: split(options.tags),
       });
 
-      logger.success('✓ Decision recorded successfully!');
+      logger.success('Decision recorded successfully!');
       logger.info(`\nDecision ID: ${decision.id}`);
       logger.info(`Status: ${decision.status}`);
       if (decision.alternatives) {

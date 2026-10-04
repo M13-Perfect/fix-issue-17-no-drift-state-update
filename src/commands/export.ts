@@ -103,7 +103,7 @@ export function registerExportCommand(cli: CAC) {
         const exportPath = await saveExport(rootDir, format as ExportFormat);
         spin.stop();
         
-        logger.success(`✓ Export generated: ${exportPath}`);
+        logger.success(`Export generated: ${exportPath}`);
         
         // Read the exported content
         const content = await readFile(exportPath, 'utf-8');
@@ -117,11 +117,11 @@ export function registerExportCommand(cli: CAC) {
           copySpin.stop();
           
           if (copied) {
-            logger.success('✓ Copied to clipboard!');
-            logger.info('📋 Ready to paste into your AI chat');
+            logger.success('Copied to clipboard!');
+            logger.info('Ready to paste into your AI chat');
           } else {
             const os = platform();
-            logger.warn('⚠ Clipboard tool not found');
+            logger.warn('Clipboard tool not found');
             
             if (os === 'linux') {
               logger.info('\nInstall xclip or xsel:');

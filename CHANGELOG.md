@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- Status lines printed two symbols: one from `log-symbols` and one from the message text (`✔ ✓ Created .context/`, `ℹ ℹ️  Run \`prelude export\``). The logger already prefixes every level with a glyph, so the redundant glyph is gone from all 36 affected messages across `init`, `update`, `export`, `share`, `watch`, `workspace`, and `decision`.
 - The GitHub Action and this repo's update workflow no longer open a pull request when the only change is refreshed timestamps in `.context/.prelude/state.json`.
 
 ### Changed

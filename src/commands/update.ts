@@ -30,7 +30,7 @@ export async function update(options: UpdateOptions = {}) {
   }
 
   if (!options.silent) {
-    logger.info('🔄 Updating context...\n');
+    logger.info('Updating context...\n');
   }
 
   try {
@@ -44,7 +44,7 @@ export async function update(options: UpdateOptions = {}) {
     const { merged, inferred, stateManager } = diff;
 
     if (options.force && options.dryRun) {
-      logger.info('🔍 Force mode would overwrite all inferred context files');
+      logger.info('Force mode would overwrite all inferred context files');
       logger.info('(decisions.json, changelog.md, and hand-curated fields preserved)');
       return;
     }
@@ -56,7 +56,7 @@ export async function update(options: UpdateOptions = {}) {
         trackMapFields(stateManager, merged.map, inferred.map);
         stateManager.save();
       }
-      logger.success('✓ Context is up to date, no changes needed');
+      logger.success('Context is up to date, no changes needed');
       return;
     }
 
@@ -67,7 +67,7 @@ export async function update(options: UpdateOptions = {}) {
 
     // Dry run - don't apply changes
     if (options.dryRun) {
-      logger.info('🔍 Dry run complete - no changes applied');
+      logger.info('Dry run complete - no changes applied');
       logger.info('Run `prelude update` to apply these changes');
       return;
     }
@@ -80,7 +80,7 @@ export async function update(options: UpdateOptions = {}) {
     // Create backup before updating
     stateManager.backup();
     if (!options.silent) {
-      logger.success('✓ Created backup of current state');
+      logger.success('Created backup of current state');
     }
 
     // Apply changes
@@ -104,11 +104,11 @@ export async function update(options: UpdateOptions = {}) {
 
     if (!options.silent) {
       if (options.force) {
-        logger.success('✅ Force update complete');
-        logger.info('ℹ️  All context files overwritten (except decisions.json and changelog.md)');
+        logger.success('Force update complete');
+        logger.info('All context files overwritten (except decisions.json and changelog.md)');
       } else {
-        logger.success(`\n✅ Context updated successfully! (${diff.drift.length} changes applied)`);
-        logger.info('ℹ️  Run `prelude export` to generate fresh output');
+        logger.success(`\nContext updated successfully! (${diff.drift.length} changes applied)`);
+        logger.info('Run `prelude export` to generate fresh output');
       }
       await printWorkspaceHint(rootDir);
     }
