@@ -435,11 +435,13 @@ export class ContextMerger {
     const prevHubs = (existing.hubs ?? []).map(h => h.file);
     const nextHubs = (inferred.hubs ?? []).map(h => h.file);
     if (JSON.stringify(prevHubs) !== JSON.stringify(nextHubs)) {
+      // Report the full lists the comparison just used. Truncating them made a
+      // change beyond the fifth hub print an Old/New pair that was identical.
       changes.push({
         field: 'hubs',
         type: 'modified',
-        oldValue: prevHubs.slice(0, 5),
-        newValue: nextHubs.slice(0, 5),
+        oldValue: prevHubs,
+        newValue: nextHubs,
         reason: 'Hub ranking changed',
       });
     }

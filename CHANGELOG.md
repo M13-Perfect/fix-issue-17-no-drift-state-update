@@ -17,6 +17,7 @@
 
 - Removed unused code flagged by lint; CI is warning-free.
 - The GitHub Action and this repo's update workflow no longer open a pull request when the only change is refreshed timestamps in `.context/.prelude/state.json`.
+- `prelude diff` no longer reports a `hubs` change whose `Old` and `New` lists are identical. The hub comparison reads the full list but the change record truncated both to the first five files, so a change below the fifth hub was reported without showing what changed.
 
 ### Changed
 
