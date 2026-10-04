@@ -223,6 +223,18 @@ describe('Prelude MCP Server — map, locate, and write tools', () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
+  it('annotates read tools as read-only and write tools as non-destructive', async () => {
+    const { tools } = await client.listTools();
+    const hints = Object.fromEntries(tools.map(t => [t.name, t.annotations]));
+    for (const name of ['prelude_compact', 'prelude_locate', 'prelude_map', 'prelude_query', 'prelude_status']) {
+      expect(hints[name]?.readOnlyHint).toBe(true);
+    }
+    for (const name of ['prelude_record_decision', 'prelude_annotate_module']) {
+      expect(hints[name]?.readOnlyHint).toBe(false);
+      expect(hints[name]?.destructiveHint).toBe(false);
+    }
+  });
+
   it('lists exactly the seven tools', async () => {
     const { tools } = await client.listTools();
     expect(tools.map(t => t.name).sort()).toEqual([

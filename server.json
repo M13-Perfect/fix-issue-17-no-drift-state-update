@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.adjective-rob/prelude",
+  "description": "Committed, machine-readable codebase context and code map that tells agents where to look.",
+  "repository": {
+    "url": "https://github.com/adjective-rob/prelude",
+    "source": "github"
+  },
+  "version": "1.9.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "prelude-context",
+      "version": "1.9.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "serve"
+        }
+      ]
+    }
+  ]
+}

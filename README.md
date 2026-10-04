@@ -99,12 +99,26 @@ Prelude runs as an [MCP](https://modelcontextprotocol.io/) server over stdio.
 
 ### One project
 
+From a project that has a `.context/` directory, register the server with Claude Code:
+
 ```bash
-cd your-project
-prelude mcp-config --client claude-code     # prints the command to register the server
+claude mcp add prelude-context -- npx -y prelude-context serve
 ```
 
-Other clients: `--client cursor`, `--client codex`, `--client claude-desktop`. To start the server by hand: `prelude serve --root /path/to/project`.
+For any other client, the server command is `npx -y prelude-context serve --root /path/to/project`:
+
+```json
+{
+  "mcpServers": {
+    "prelude-context": {
+      "command": "npx",
+      "args": ["-y", "prelude-context", "serve", "--root", "/path/to/project"]
+    }
+  }
+}
+```
+
+`prelude mcp-config --client claude-code | cursor | codex | claude-desktop` prints the exact snippet for your machine and client. The read tools are annotated read-only, so clients that honour tool annotations can run them without asking.
 
 | Tool | What the agent gets |
 |------|-------------|

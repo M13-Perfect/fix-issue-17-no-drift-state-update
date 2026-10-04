@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.9.1 — 2026-10-04
 
 ### Added
+
+- MCP tool annotations: the read tools (`prelude_compact`, `prelude_locate`, `prelude_map`, `prelude_query`, `prelude_status`, `prelude_projects`) declare `readOnlyHint`, and the write tools declare that they are non-destructive, so clients can skip or soften approval prompts.
+- `mcpName` in `package.json` and a `server.json` for the MCP registry.
 
 - `LICENSE` file (MIT). The package declared MIT but shipped no license text.
 - CI workflow: lint, build, and tests on Node 20, 22, and 24.
@@ -12,6 +15,7 @@
 
 ### Fixed
 
+- Removed unused code flagged by lint; CI is warning-free.
 - The GitHub Action and this repo's update workflow no longer open a pull request when the only change is refreshed timestamps in `.context/.prelude/state.json`.
 
 ### Changed

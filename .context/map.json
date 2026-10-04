@@ -4,7 +4,7 @@
   "stats": {
     "files": 72,
     "modules": 11,
-    "edges": 217,
+    "edges": 215,
     "unresolvedImports": 5
   },
   "modules": [
@@ -90,7 +90,7 @@
             "IGNORE_PATTERNS"
           ],
           "importedBy": 17,
-          "rank": 0.68
+          "rank": 0.74
         }
       ],
       "dependedOnBy": [
@@ -365,7 +365,7 @@
             "src/utils/log.ts"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         }
       ],
       "dependsOn": [
@@ -393,7 +393,7 @@
         {
           "file": "src/core/claude-md-parser.ts",
           "lang": "ts",
-          "lines": 472,
+          "lines": 471,
           "exports": [
             "ClaudeMdData",
             "parseClaudeMd"
@@ -412,7 +412,7 @@
             "src/core/query-engine.ts"
           ],
           "importedBy": 2,
-          "rank": 0.08
+          "rank": 0.09
         },
         {
           "file": "src/core/decisions.ts",
@@ -430,7 +430,7 @@
             "src/utils/time.ts"
           ],
           "importedBy": 2,
-          "rank": 0.08
+          "rank": 0.09
         },
         {
           "file": "src/core/diff.ts",
@@ -454,7 +454,7 @@
             "src/utils/fs.ts"
           ],
           "importedBy": 2,
-          "rank": 0.08
+          "rank": 0.09
         },
         {
           "file": "src/core/exporter.ts",
@@ -476,12 +476,12 @@
             "src/utils/fs.ts"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         },
         {
           "file": "src/core/infer.ts",
           "lang": "ts",
-          "lines": 1741,
+          "lines": 1698,
           "exports": [
             "parsePyprojectToml",
             "extractPyDepName",
@@ -498,7 +498,7 @@
             "src/utils/time.ts"
           ],
           "importedBy": 4,
-          "rank": 0.16
+          "rank": 0.17
         },
         {
           "file": "src/core/locate.ts",
@@ -520,7 +520,7 @@
             "src/utils/fs.ts"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         },
         {
           "file": "src/core/map-annotate.ts",
@@ -539,7 +539,7 @@
             "src/utils/fs.ts"
           ],
           "importedBy": 2,
-          "rank": 0.08
+          "rank": 0.09
         },
         {
           "file": "src/core/map-format.ts",
@@ -560,7 +560,7 @@
             "src/schema/index.ts"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         },
         {
           "file": "src/core/map-scanner.ts",
@@ -582,7 +582,7 @@
             "src/schema/index.ts"
           ],
           "importedBy": 4,
-          "rank": 0.16
+          "rank": 0.17
         },
         {
           "file": "src/core/merger.ts",
@@ -599,7 +599,7 @@
             "src/schema/index.ts"
           ],
           "importedBy": 4,
-          "rank": 0.16
+          "rank": 0.17
         },
         {
           "file": "src/core/query-engine.ts",
@@ -623,12 +623,12 @@
             "src/utils/fs.ts"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         },
         {
           "file": "src/core/source-scanner.ts",
           "lang": "ts",
-          "lines": 621,
+          "lines": 617,
           "exports": [
             "SourceScanResult",
             "HookInfo",
@@ -643,25 +643,23 @@
             "scanSources"
           ],
           "imports": [
-            "src/constants.ts",
-            "src/utils/fs.ts"
+            "src/constants.ts"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         },
         {
           "file": "src/core/state-manager.ts",
           "lang": "ts",
-          "lines": 181,
+          "lines": 180,
           "exports": [
             "StateManager"
           ],
           "imports": [
-            "src/schema/state.ts",
-            "src/utils/fs.ts"
+            "src/schema/state.ts"
           ],
           "importedBy": 7,
-          "rank": 0.28
+          "rank": 0.3
         },
         {
           "file": "src/core/updater.ts",
@@ -695,7 +693,7 @@
             "inferDirectoryPurpose"
           ],
           "importedBy": 2,
-          "rank": 0.08
+          "rank": 0.09
         },
         {
           "file": "src/core/watcher.ts",
@@ -744,7 +742,7 @@
             "src/utils/fs.ts"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         }
       ],
       "dependsOn": [
@@ -819,7 +817,7 @@
         {
           "file": "src/mcp/server.ts",
           "lang": "ts",
-          "lines": 566,
+          "lines": 581,
           "exports": [
             "ServerOptions",
             "createPreludeServer",
@@ -879,7 +877,7 @@
             "src/constants.ts"
           ],
           "importedBy": 20,
-          "rank": 0.8
+          "rank": 0.87
         },
         {
           "file": "src/runtime/home.ts",
@@ -891,7 +889,7 @@
             "workspaceIndexPath"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         }
       ],
       "dependsOn": [
@@ -961,7 +959,7 @@
             "src/schema/workspace.ts"
           ],
           "importedBy": 18,
-          "rank": 0.72
+          "rank": 0.78
         },
         {
           "file": "src/schema/map.ts",
@@ -994,7 +992,7 @@
             "Project"
           ],
           "importedBy": 3,
-          "rank": 0.12
+          "rank": 0.13
         },
         {
           "file": "src/schema/session.ts",
@@ -1090,7 +1088,7 @@
             "listFiles",
             "getDirectoryTree"
           ],
-          "importedBy": 25,
+          "importedBy": 23,
           "rank": 1
         },
         {
@@ -1103,7 +1101,7 @@
             "spinner"
           ],
           "importedBy": 13,
-          "rank": 0.52
+          "rank": 0.57
         },
         {
           "file": "src/utils/time.ts",
@@ -1116,7 +1114,7 @@
             "generateId"
           ],
           "importedBy": 4,
-          "rank": 0.16
+          "rank": 0.17
         },
         {
           "file": "src/utils/version.ts",
@@ -1126,7 +1124,7 @@
             "getPackageVersion"
           ],
           "importedBy": 2,
-          "rank": 0.08
+          "rank": 0.09
         }
       ],
       "dependedOnBy": [
@@ -1312,7 +1310,7 @@
   "hubs": [
     {
       "file": "src/utils/fs.ts",
-      "importedBy": 25,
+      "importedBy": 23,
       "rank": 1,
       "exports": [
         "readJSON",
@@ -1325,7 +1323,7 @@
     {
       "file": "src/runtime/context.ts",
       "importedBy": 20,
-      "rank": 0.8,
+      "rank": 0.87,
       "exports": [
         "resolveContextDir",
         "isExternalBrainMode"
@@ -1334,12 +1332,12 @@
     {
       "file": "src/schema/index.ts",
       "importedBy": 18,
-      "rank": 0.72
+      "rank": 0.78
     },
     {
       "file": "src/constants.ts",
       "importedBy": 17,
-      "rank": 0.68,
+      "rank": 0.74,
       "exports": [
         "CONTEXT_DIR",
         "CONTEXT_FILES",
@@ -1350,7 +1348,7 @@
     {
       "file": "src/utils/log.ts",
       "importedBy": 13,
-      "rank": 0.52,
+      "rank": 0.57,
       "exports": [
         "logger",
         "logTable",
@@ -1360,7 +1358,7 @@
     {
       "file": "src/core/state-manager.ts",
       "importedBy": 7,
-      "rank": 0.28,
+      "rank": 0.3,
       "exports": [
         "StateManager"
       ]
@@ -1368,7 +1366,7 @@
     {
       "file": "src/core/infer.ts",
       "importedBy": 4,
-      "rank": 0.16,
+      "rank": 0.17,
       "exports": [
         "parsePyprojectToml",
         "extractPyDepName",
@@ -1380,7 +1378,7 @@
     {
       "file": "src/core/map-scanner.ts",
       "importedBy": 4,
-      "rank": 0.16,
+      "rank": 0.17,
       "exports": [
         "isTestFile",
         "MapLang",
@@ -1392,7 +1390,7 @@
     {
       "file": "src/core/merger.ts",
       "importedBy": 4,
-      "rank": 0.16,
+      "rank": 0.17,
       "exports": [
         "MergeResult",
         "MergeChange",
@@ -1403,7 +1401,7 @@
     {
       "file": "src/utils/time.ts",
       "importedBy": 4,
-      "rank": 0.16,
+      "rank": 0.17,
       "exports": [
         "getCurrentTimestamp",
         "formatTimestamp",
@@ -1414,7 +1412,7 @@
     {
       "file": "src/commands/workspace.ts",
       "importedBy": 3,
-      "rank": 0.12,
+      "rank": 0.13,
       "exports": [
         "formatProjectListLine",
         "printWorkspaceHint",
@@ -1424,7 +1422,7 @@
     {
       "file": "src/core/exporter.ts",
       "importedBy": 3,
-      "rank": 0.12,
+      "rank": 0.13,
       "exports": [
         "exportToMarkdown",
         "exportToJSON",
@@ -1436,7 +1434,7 @@
     {
       "file": "src/core/locate.ts",
       "importedBy": 3,
-      "rank": 0.12,
+      "rank": 0.13,
       "exports": [
         "LocateHit",
         "LocateOptions",
@@ -1448,7 +1446,7 @@
     {
       "file": "src/core/map-format.ts",
       "importedBy": 3,
-      "rank": 0.12,
+      "rank": 0.13,
       "exports": [
         "topFiles",
         "relativeToModule",
@@ -1460,7 +1458,7 @@
     {
       "file": "src/core/query-engine.ts",
       "importedBy": 3,
-      "rank": 0.12,
+      "rank": 0.13,
       "exports": [
         "estimateTokens",
         "truncateToTokenBudget",

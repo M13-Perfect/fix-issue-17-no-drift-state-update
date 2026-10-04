@@ -147,6 +147,11 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
     : singleProjectResolver(opts.rootDir ?? process.cwd());
   const workspaceMode = resolver.mode === 'workspace';
 
+  // Tool annotations: clients use these to decide which calls need approval.
+  const READ_ONLY = { readOnlyHint: true, openWorldHint: false };
+  // Appends to or edits committed .context/ files; never deletes.
+  const WRITES_CONTEXT = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
+
   const server = new McpServer(
     { name: workspaceMode ? 'prelude' : 'prelude-context', version: getPackageVersion() },
     { instructions: workspaceMode ? WORKSPACE_INSTRUCTIONS : SINGLE_INSTRUCTIONS }
@@ -165,6 +170,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       format: z.enum(['md', 'json']).default('md').describe('Output format — md for reading, json for parsing'),
       max_tokens: z.number().positive().optional().describe('Approximate token budget for the response'),
     },
+    READ_ONLY,
     async ({ project, topic, scope, type, format, max_tokens }) => {
       if (!topic && !scope && !type) {
         return {
@@ -197,6 +203,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       scope: z.string().optional().describe('Filter to a specific directory path'),
       max_tokens: z.number().positive().default(800).describe('Token budget (default 800)'),
     },
+    READ_ONLY,
     async ({ project, topic, scope, max_tokens }) => {
       try {
         const p = await resolver.resolve(project);
@@ -212,6 +219,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
     'prelude_status',
     'Check Prelude status — which context files exist and basic project info.',
     { project },
+    READ_ONLY,
     async ({ project }) => {
       try {
         const p = await resolver.resolve(project);
@@ -252,6 +260,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       scope: z.string().optional().describe('Only consider files under this directory'),
       include_tests: z.boolean().optional().describe('Include test files (default: only when the query mentions tests)'),
     },
+    READ_ONLY,
     async ({ project, query, limit, scope, include_tests }) => {
       try {
         if (!query.trim()) throw new Error('Provide a non-empty query.');
@@ -286,6 +295,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       file: z.string().optional().describe('File path relative to the project root'),
       max_tokens: z.number().positive().default(1200).describe('Approximate token budget (default 1200)'),
     },
+    READ_ONLY,
     async ({ project, module, file, max_tokens }) => {
       try {
         const p = await resolver.resolve(project);
@@ -325,6 +335,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       status: z.enum(['proposed', 'accepted', 'rejected', 'deprecated', 'superseded']).default('accepted'),
       author: z.string().optional().describe('Who made the decision (default "agent")'),
     },
+    WRITES_CONTEXT,
     async ({ project, title, rationale, alternatives, impact, tags, status, author }) => {
       try {
         const p = await resolver.resolve(project);
@@ -353,6 +364,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       purpose: z.string().optional().describe('Short phrase describing what the module is for'),
       notes: z.string().optional().describe('Notes for future readers'),
     },
+    WRITES_CONTEXT,
     async ({ project, path, purpose, notes }) => {
       try {
         if (!purpose && !notes) throw new Error('Provide purpose, notes, or both.');
@@ -372,6 +384,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       {
         refresh: z.boolean().default(false).describe('Rebuild the workspace index first'),
       },
+      READ_ONLY,
       async ({ refresh }) => {
         try {
           const index = await ensureFreshIndex(refresh);
@@ -392,6 +405,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
         contract: z.string().optional().describe('The interface between them, e.g. "REST /api/v1, JWT bearer"'),
         notes: z.string().optional().describe('Anything else a future reader should know'),
       },
+      WRITES_CONTEXT,
       async ({ from, to, relation, contract, notes }) => {
         try {
           const source = await resolver.resolve(from);
@@ -426,6 +440,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
       'prelude_workspace_refresh',
       'Rebuild the workspace index after adding projects or running prelude update in one of them.',
       {},
+      { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       async () => {
         try {
           const index = await ensureFreshIndex(true);
