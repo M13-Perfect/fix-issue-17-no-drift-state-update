@@ -504,7 +504,7 @@
         {
           "file": "src/core/locate.ts",
           "lang": "ts",
-          "lines": 400,
+          "lines": 447,
           "exports": [
             "LocateHit",
             "LocateOptions",
@@ -820,7 +820,7 @@
         {
           "file": "src/mcp/server.ts",
           "lang": "ts",
-          "lines": 583,
+          "lines": 586,
           "exports": [
             "ServerOptions",
             "createPreludeServer",
@@ -1211,7 +1211,7 @@
         {
           "file": "tests/locate.test.ts",
           "lang": "ts",
-          "lines": 188,
+          "lines": 244,
           "imports": [
             "src/core/locate.ts",
             "src/core/map-scanner.ts",

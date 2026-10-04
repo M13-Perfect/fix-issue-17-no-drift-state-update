@@ -21,6 +21,10 @@ export interface LocateHit {
   importedBy?: number;
   exports?: string[];   // first 5
   reasons: string[];
+  // Context a text search cannot give. Each is omitted when empty.
+  tests?: string[];     // tests that import this file, else the module's tests (first 3)
+  decisions?: string[]; // titles of recorded decisions that mention this file (first 3)
+  notes?: string;       // notes a human or agent left on the module
 }
 
 export interface LocateOptions {
@@ -89,6 +93,37 @@ interface FileIndex {
   roleTokens: Set<string>;
   moduleTokens: Set<string>;
   decisions: Array<{ title: string; tokens: Set<string> }>;
+  tests: string[];
+}
+
+const HIT_LIST_MAX = 3;
+
+/** Source file → test files that import it. Go test targets are package dirs ending in '/'. */
+function testsByFile(map: CodeMap): Map<string, string[]> {
+  const direct = new Map<string, string[]>();
+  const byDir = new Map<string, string[]>();
+  for (const mod of map.modules) {
+    for (const f of mod.files) {
+      if (!f.isTest) continue;
+      for (const target of f.imports ?? []) {
+        const bucket = target.endsWith('/') ? byDir : direct;
+        const list = bucket.get(target) ?? [];
+        if (!list.includes(f.file)) list.push(f.file);
+        bucket.set(target, list);
+      }
+    }
+  }
+  if (byDir.size > 0) {
+    for (const mod of map.modules) {
+      for (const f of mod.files) {
+        if (f.isTest) continue;
+        const pkgTests = byDir.get(posix.dirname(f.file) + '/');
+        if (pkgTests && !direct.has(f.file)) direct.set(f.file, pkgTests);
+      }
+    }
+  }
+  for (const list of direct.values()) list.sort();
+  return direct;
 }
 
 /** file → query token → number of occurrences in that file's contents. */
@@ -184,6 +219,8 @@ function buildIndex(
     };
   });
 
+  const coveredBy = testsByFile(map);
+
   const index: FileIndex[] = [];
   for (const mod of map.modules) {
     const moduleTokens = new Set([...indexTokens(mod.purpose), ...indexTokens(mod.notes)]);
@@ -209,6 +246,7 @@ function buildIndex(
         decisions: decisionTexts
           .filter(d => mentionsFile(d.text, f.file))
           .map(d => ({ title: d.title, tokens: d.tokens })),
+        tests: f.isTest ? [] : (coveredBy.get(f.file) ?? mod.tests ?? []),
       });
     }
   }
@@ -334,6 +372,9 @@ export function locateInMap(
     if (file.rank) hit.rank = file.rank;
     if (file.importedBy) hit.importedBy = file.importedBy;
     if (file.exports?.length) hit.exports = file.exports.slice(0, 5);
+    if (entry.tests.length > 0) hit.tests = entry.tests.slice(0, HIT_LIST_MAX);
+    if (entry.decisions.length > 0) hit.decisions = entry.decisions.slice(0, HIT_LIST_MAX).map(d => d.title);
+    if (module.notes) hit.notes = module.notes;
     hits.push(hit);
   }
 
@@ -394,6 +435,12 @@ export function formatLocateText(hits: LocateHit[], query: string, map?: CodeMap
       let block = `${i + 1}. ${h.file}  ·  ${mod}  ·  score ${Math.floor(h.score)}\n`;
       if (h.exports?.length) block += `   exports: ${h.exports.join(', ')}\n`;
       block += `   why: ${h.reasons.join(', ')}\n`;
+      const impact: string[] = [];
+      if (h.importedBy) impact.push(`imported by ${h.importedBy} file${h.importedBy === 1 ? '' : 's'}`);
+      if (h.tests?.length) impact.push(`tests: ${h.tests.join(', ')}`);
+      if (impact.length > 0) block += `   impact: ${impact.join('  ·  ')}\n`;
+      if (h.decisions?.length) block += `   decisions: ${h.decisions.join('; ')}\n`;
+      if (h.notes) block += `   notes: ${h.notes}\n`;
       return block;
     })
     .join('');

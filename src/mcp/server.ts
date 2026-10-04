@@ -27,7 +27,9 @@ export type { ResolvedProject, ProjectResolver } from './resolver.js';
 const SINGLE_INSTRUCTIONS =
   'Prelude serves committed context about this codebase. Recommended flow: ' +
   'call prelude_compact for an overview, prelude_locate to find the files for ' +
-  'your task, then read those files. Record choices with ' +
+  'your task, then read those files. Each locate result lists the tests that ' +
+  'cover the file and the decisions that constrain it; run those tests after ' +
+  'editing and respect those decisions. Record choices with ' +
   'prelude_record_decision and fix wrong module descriptions with ' +
   'prelude_annotate_module so the next session benefits.';
 
@@ -35,7 +37,8 @@ const WORKSPACE_INSTRUCTIONS =
   'Prelude serves committed context for several codebases on this machine. ' +
   'Start with prelude_projects to see what exists and how projects relate. ' +
   'Then prelude_compact(project) for an overview and prelude_locate(query, ' +
-  'project) to find files before reading. Record choices with ' +
+  'project) to find files before reading; each result lists the tests that ' +
+  'cover the file and the decisions that constrain it. Record choices with ' +
   'prelude_record_decision and cross-project contracts with ' +
   'prelude_link_projects.';
 
@@ -252,7 +255,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
 
   server.tool(
     'prelude_locate',
-    'Find the files most relevant to a task before reading or grepping. Give a short phrase describing what you need to change or understand (e.g. \'billing checkout webhook\', \'where manual edits are preserved\'). Returns ranked files with the reason each matched. Call this first when you do not already know which file to open.' +
+    'Find the files most relevant to a task before reading or grepping. Give a short phrase describing what you need to change or understand (e.g. \'billing checkout webhook\', \'where manual edits are preserved\'). Searches names, paths, and file contents, and returns ranked files with the reason each matched. Each result also carries what a text search cannot: how many files import it, the tests that cover it, recorded decisions that mention it, and notes left by earlier sessions. Read those before editing. Call this first when you do not already know which file to open.' +
       (workspaceMode ? ' Omit `project` to search every registered project; files are then prefixed with `<project>:`.' : ''),
     {
       project,

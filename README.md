@@ -1,13 +1,15 @@
 # Prelude
 
-**A committed, machine-readable map of your codebase, so AI agents know what the project is and where to look.**
+**Project memory and a code map for AI agents: where to look, why the code is the way it is, and what a change will touch.**
 
 [![npm version](https://img.shields.io/npm/v/prelude-context.svg)](https://www.npmjs.com/package/prelude-context)
 [![CI](https://github.com/adjective-rob/prelude/actions/workflows/ci.yml/badge.svg)](https://github.com/adjective-rob/prelude/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node >= 20.19](https://img.shields.io/badge/node-%3E%3D20.19-brightgreen.svg)](https://nodejs.org)
 
-Agents spend most of their tokens on an unfamiliar codebase in a loop of grep, read, grep again. Prelude scans the project once and writes a small set of JSON files to `.context/`: the stack, the architecture, the constraints, the decisions, and a code map of every module, its exports, and what imports what. You commit those files. Every agent session after that starts from them, through an MCP server, a generated `CLAUDE.md` / `AGENTS.md`, or plain stdout.
+An agent with grep can find where a word appears. It cannot find out why the code is shaped the way it is, which tests cover a file, how many other files depend on it, or what the last session learned. That knowledge isn't in the source.
+
+Prelude keeps it in the repo. It scans the project once and writes a small set of JSON files to `.context/`: the stack, the architecture, the constraints, the decisions, and a code map of every module, its exports, and what imports what. You commit those files, and agents add to them as they work. Every later session starts from them, through an MCP server, a generated `CLAUDE.md` / `AGENTS.md`, or plain stdout.
 
 No embeddings, no server to host, no network calls. Regex heuristics over TypeScript/JavaScript, Python, Go, and Rust.
 
@@ -27,25 +29,26 @@ npm install -g prelude-context
 prelude init
 ```
 
-Then ask it where to look:
+Then give it a task phrase:
 
 ```bash
-prelude locate preserve manual edits during update --limit 3
+prelude locate preserve manual edits during update --limit 2
 ```
 
 ```
-1. src/core/state-manager.ts  ·  src/core (Core business logic)  ·  score 13
-   exports: StateManager
-   why: decision: Manual edits are sacred, matches all terms
-2. src/core/merger.ts  ·  src/core (Core business logic)  ·  score 13
+1. src/core/merger.ts  ·  src/core (Core business logic)  ·  score 32
    exports: MergeResult, MergeChange, ContextMerger, trackMapFields
-   why: decision: Manual edits are sacred, matches all terms
-3. src/commands/update.ts  ·  src/commands (Command handlers)  ·  score 9
-   exports: UpdateOptions, update
-   why: export update, file update
+   why: decision: Manual edits are sacred, content preserve×25, manual×31, edit×9, update×6, matches all terms
+   impact: imported by 4 files  ·  tests: tests/map-merge.test.ts, tests/mcp-server.test.ts, tests/merge-preserve.test.ts
+   decisions: Manual edits are sacred
+2. src/core/state-manager.ts  ·  src/core (Core business logic)  ·  score 26
+   exports: StateManager
+   why: decision: Manual edits are sacred, content manual×9, edit×4, update×6, matches all terms
+   impact: imported by 7 files  ·  tests: tests/map-merge.test.ts, tests/mcp-server.test.ts, tests/merge-preserve.test.ts
+   decisions: Manual edits are sacred
 ```
 
-That is real output from this repository, which keeps its own [`.context/`](./.context) committed. Browse it to see what Prelude writes.
+One call returns the files to read, why each was picked, what depends on them, the tests to run afterwards, and the recorded decision that constrains the change. That is real output from this repository, which keeps its own [`.context/`](./.context) committed. Browse it to see what Prelude writes.
 
 Requires Node.js >= 20.19.
 
@@ -76,13 +79,42 @@ Commit `.context/`. Gitignore `.context/*.session.json`.
 [map] hubs: src/utils/fs.ts(25), src/runtime/context.ts(20), src/schema/index.ts(18), ... | src/core (Core business logic): state-manager.ts, infer.ts, map-scanner.ts +15 | ...
 ```
 
+## What grep can't tell an agent
+
+| Question | Where Prelude gets the answer |
+|---|---|
+| Why is this code the way it is? | `decisions.json`: decisions and rationale, recorded by you or by an agent with `prelude_record_decision` |
+| What depends on this file? | `map.json`: the resolved import graph, importer counts, hub files |
+| Which tests cover it? | `map.json`: the test files that import it |
+| What did the last session learn about this module? | Module notes, written with `prelude annotate` or `prelude_annotate_module` and never overwritten |
+| What must I not do here? | `constraints.json` |
+| How does this repo talk to that one? | `relatedProjects` in `project.json`, served across repos in workspace mode |
+
+`prelude locate` attaches the first four to every file it returns. On a freshly initialised project the decisions and notes are empty; the import graph and tests are there from the first run, and the rest accumulates as people and agents record it.
+
+### How well does `locate` find files?
+
+`bench/locate-bench.ts` replays a repository's git history: each commit subject is a query, the files that commit changed are the answer, and the repo is checked out at the parent commit so nothing sees the change itself. The baseline is a grep for each query term over the same files, ranked by distinct terms matched. Share of queries with a correct file in the top 8:
+
+| Repo | Source files | Ranked grep | `prelude locate` |
+|---|---|---|---|
+| cobra (Go) | 37 | 95% | 96% |
+| flask (Python) | 82 | 83% | 86% |
+| hono (TypeScript) | 361 | 88% | 97% |
+| ripgrep (Rust) | 100 | 64% | 79% |
+| typer (Python) | 629 | 76% | 74% |
+| express (JavaScript) | 147 | 87% | 90% |
+| **Average** | | **82%** | **87%** |
+
+The top result is correct 48% of the time, against 39% for grep. Up to 100 commits per repo. The scoring weights were chosen using these same six repositories, so treat the numbers as in-sample; run the script on your own repo to check (see [CONTRIBUTING.md](./CONTRIBUTING.md#improve-prelude-locate)). File-finding is the baseline here, not the point: the table above is.
+
 ## Why not just write a CLAUDE.md or AGENTS.md?
 
 Keep them. Prelude generates both (`prelude export --format claude-md`, `--format agents-md`) and can bootstrap from one you already have (`prelude init --from-claude-md`). The difference is what sits underneath:
 
 - **It doesn't rot silently.** A hand-written context file is correct on the day it is written. `prelude diff --check` exits 1 when the committed context no longer matches the code, so CI catches the drift.
 - **It is structured.** JSON with a published schema, so tools can query one section, one directory, or one module instead of loading a whole markdown file.
-- **It answers "where".** The code map and `prelude locate` turn a task phrase into a short list of files with the reason each was picked. A prose file can't do that.
+- **It answers "where" and "what else".** `prelude locate` turns a task phrase into a short list of files with the reason each was picked, the tests that cover it, and the decisions that apply. A prose file can't do that.
 - **Your edits survive.** Prelude tracks which fields it inferred and which you wrote. `prelude update` refreshes the first kind and never touches the second.
 - **It spans projects.** Register several repos once and a single MCP server answers for all of them, including how they relate.
 - **It isn't tied to one tool.** The same files feed Claude Code, Cursor, Codex, Claude Desktop, or anything that reads JSON.
@@ -91,7 +123,7 @@ Keep them. Prelude generates both (`prelude export --format claude-md`, `--forma
 
 - **In-session repo maps** (Aider's, for example) are computed when the session starts and discarded when it ends. Prelude's map is a file: diffable in a pull request, correctable by hand, shared by the whole team.
 - **Hosted code search and indexing services** are more powerful retrieval, and they are a service to run or pay for. Prelude is static files and a local CLI.
-- **Embedding-based retrieval** finds semantic matches Prelude's keyword scoring will miss. Prelude's results are deterministic and explain themselves, and they cost nothing to produce.
+- **Embedding-based retrieval** finds semantic matches that Prelude's term matching will miss. Prelude's results are deterministic and explain themselves, and they cost nothing to produce.
 
 ## Use it from an agent (MCP)
 
@@ -123,7 +155,7 @@ For any other client, the server command is `npx -y prelude-context serve --root
 | Tool | What the agent gets |
 |------|-------------|
 | `prelude_compact` | The token-budgeted overview (about 800 tokens by default), including the `[map]` line |
-| `prelude_locate` | The files most relevant to a task phrase, with reasons. Meant to be called before grepping |
+| `prelude_locate` | The files most relevant to a task phrase, each with reasons, importer count, covering tests, applicable decisions, and notes |
 | `prelude_map` | Hubs and modules, one module in detail, or one file's exports and importers |
 | `prelude_query` | Context filtered by topic, directory scope, or type |
 | `prelude_record_decision` | Appends a decision to `decisions.json` so later sessions inherit it |
@@ -200,7 +232,7 @@ See [action.yml](./action.yml) for the inputs (`version`, `args`, `working-direc
 | `prelude init` | Analyze the project and write `.context/` |
 | `prelude update` | Re-analyze and merge, preserving manual edits |
 | `prelude diff` | Show what `update` would change, without writing |
-| `prelude locate <query>` | Rank the files most relevant to a task phrase |
+| `prelude locate <query>` | Rank the files for a task, with tests, importers, and decisions for each |
 | `prelude compact` | One dense line per section, for prompt injection |
 | `prelude query` | Filter context by topic, directory, or type |
 | `prelude export` | Markdown, JSON, `CLAUDE.md`, `AGENTS.md`, or `.cursorrules` |
@@ -240,7 +272,7 @@ prelude diff --check        # exit 1 on drift
 
 ### `prelude locate <query...>`
 
-Scores every file on two kinds of evidence: what the map knows (exports, paths, module purposes, architecture roles, decisions that mention the file) and a scan of file contents for the query terms, weighted so rare terms count for more. Each result lists the reasons it was picked.
+Scores every file on two kinds of evidence: what the map knows (exports, paths, module purposes, architecture roles, decisions that mention the file) and a scan of file contents for the query terms, weighted so rare terms count for more. Each result lists the reasons it was picked, then an `impact` line (how many files import it, which tests cover it), the recorded `decisions` that mention it, and any module `notes`. `--format json` returns the same fields.
 
 ```bash
 prelude locate billing checkout webhook
@@ -394,6 +426,7 @@ The format itself is language-agnostic. Adding a language to the scanner is a co
 
 - [ ] gitignore-aware file walking
 - [ ] Graph-weighted ranking for `locate`
+- [ ] An end-to-end benchmark: tokens and tool calls an agent needs to finish a task, with and without Prelude
 - [ ] More languages in the code map
 - [ ] Learned heuristics from agent usage
 

@@ -1,10 +1,18 @@
 # Changelog
 
-## Unreleased
+## 1.10.0 — 2026-10-04
+
+`locate` now finds files at least as well as a ranked grep, and returns what grep cannot.
+
+### Added
+
+- Every `locate` result carries the context around the file: the tests that import it (or the module's tests), the titles of recorded decisions that mention it, and the module's notes. Text output gains `impact`, `decisions`, and `notes` lines; JSON output and the MCP `_meta.hits` gain `tests`, `decisions`, and `notes` fields. Empty fields are omitted.
 
 ### Changed
 
 - `prelude locate` and `prelude_locate` now also search file contents for the query terms and blend that with the map evidence, weighting rare terms higher. Results gain a `content term×count` reason. On the git-history benchmark (`bench/locate-bench.ts`, six repositories) hit@8 rises from 55% to 87% on average, against 82% for a ranked grep.
+- MCP server instructions and the `prelude_locate` description tell agents to run the listed tests and respect the listed decisions.
+- README leads with what a text search cannot tell an agent, and reports the benchmark.
 
 ## 1.9.1 — 2026-10-04
 

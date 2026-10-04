@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { tokenize, locateInMap, scanContent } from '../src/core/locate.js';
+import { tokenize, locateInMap, scanContent, formatLocateText } from '../src/core/locate.js';
 import { buildMap } from '../src/core/map-scanner.js';
 import type { CodeMap, Decisions, MapFile } from '../src/schema/index.js';
 
@@ -184,5 +184,61 @@ describe('scanContent', () => {
     // report.ts is named for the query; ledger.ts would only match on content.
     const content = await scanContent(rootDir, fixtureMap, 'report render');
     expect(locateInMap(fixtureMap, 'report render', {}, { content })[0].file).toBe('src/report.ts');
+  });
+});
+
+describe('locate result context', () => {
+  const ctxMap: CodeMap = {
+    $schema: 'x',
+    version: '1.0.0',
+    stats: { files: 4, modules: 2, edges: 2, unresolvedImports: 0 },
+    modules: [
+      {
+        path: 'src/billing',
+        notes: 'Amounts are integer cents',
+        fileCount: 2,
+        files: [
+          { file: 'src/billing/invoice.ts', lang: 'ts', lines: 10, exports: ['createInvoice'], importedBy: 2 },
+          { file: 'src/billing/refund.ts', lang: 'ts', lines: 10, exports: ['refundInvoice'] },
+        ],
+        tests: ['tests/billing.test.ts'],
+      },
+      {
+        path: 'tests',
+        fileCount: 2,
+        files: [
+          { file: 'tests/billing.test.ts', lang: 'ts', lines: 5, isTest: true },
+          { file: 'tests/invoice.test.ts', lang: 'ts', lines: 5, isTest: true, imports: ['src/billing/invoice.ts'] },
+        ],
+      },
+    ],
+  };
+  const ctxDecisions = {
+    decisions: [{ id: '1', timestamp: 't', title: 'Invoices are immutable', status: 'accepted', rationale: 'src/billing/invoice.ts never updates a row.' }],
+  } as unknown as Decisions;
+
+  it('attaches tests, decisions, and notes to each hit', () => {
+    const hits = locateInMap(ctxMap, 'invoice', {}, { decisions: ctxDecisions });
+    const invoice = hits.find(h => h.file === 'src/billing/invoice.ts')!;
+    expect(invoice.tests).toEqual(['tests/invoice.test.ts']);       // the test that imports it
+    expect(invoice.decisions).toEqual(['Invoices are immutable']);
+    expect(invoice.notes).toBe('Amounts are integer cents');
+
+    const refund = hits.find(h => h.file === 'src/billing/refund.ts')!;
+    expect(refund.tests).toEqual(['tests/billing.test.ts']);        // falls back to the module's tests
+    expect(refund.decisions).toBeUndefined();
+  });
+
+  it('renders impact, decisions, and notes lines', () => {
+    const out = formatLocateText(locateInMap(ctxMap, 'createInvoice', { limit: 1 }, { decisions: ctxDecisions }), 'createInvoice');
+    expect(out).toContain('   impact: imported by 2 files  ·  tests: tests/invoice.test.ts\n');
+    expect(out).toContain('   decisions: Invoices are immutable\n');
+    expect(out).toContain('   notes: Amounts are integer cents\n');
+  });
+
+  it('omits the extra lines when there is nothing to say', () => {
+    const bare: CodeMap = { ...ctxMap, modules: [{ path: 'lib', fileCount: 1, files: [{ file: 'lib/a.ts', lang: 'ts', lines: 1, exports: ['widget'] }] }] };
+    const out = formatLocateText(locateInMap(bare, 'widget'), 'widget');
+    expect(out).not.toMatch(/impact:|decisions:|notes:/);
   });
 });
