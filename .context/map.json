@@ -4,8 +4,8 @@
   "stats": {
     "files": 73,
     "modules": 11,
-    "edges": 216,
-    "unresolvedImports": 6
+    "edges": 217,
+    "unresolvedImports": 7
   },
   "modules": [
     {
@@ -27,7 +27,7 @@
         {
           "file": "bench/locate-bench.ts",
           "lang": "ts",
-          "lines": 224,
+          "lines": 227,
           "imports": [
             "src/core/locate.ts",
             "src/core/map-scanner.ts",
@@ -221,7 +221,7 @@
         {
           "file": "src/commands/locate.ts",
           "lang": "ts",
-          "lines": 42,
+          "lines": 44,
           "exports": [
             "registerLocateCommand"
           ],
@@ -504,11 +504,13 @@
         {
           "file": "src/core/locate.ts",
           "lang": "ts",
-          "lines": 306,
+          "lines": 400,
           "exports": [
             "LocateHit",
             "LocateOptions",
             "tokenize",
+            "ContentMatches",
+            "scanContent",
             "locateInMap",
             "loadLocateContext",
             "locate",
@@ -818,7 +820,7 @@
         {
           "file": "src/mcp/server.ts",
           "lang": "ts",
-          "lines": 581,
+          "lines": 583,
           "exports": [
             "ServerOptions",
             "createPreludeServer",
@@ -1209,9 +1211,10 @@
         {
           "file": "tests/locate.test.ts",
           "lang": "ts",
-          "lines": 130,
+          "lines": 188,
           "imports": [
             "src/core/locate.ts",
+            "src/core/map-scanner.ts",
             "src/schema/index.ts"
           ],
           "isTest": true
@@ -1449,8 +1452,8 @@
         "LocateHit",
         "LocateOptions",
         "tokenize",
-        "locateInMap",
-        "loadLocateContext"
+        "ContentMatches",
+        "scanContent"
       ]
     },
     {

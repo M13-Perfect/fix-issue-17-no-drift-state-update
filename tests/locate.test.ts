@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { tokenize, locateInMap } from '../src/core/locate.js';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { tokenize, locateInMap, scanContent } from '../src/core/locate.js';
+import { buildMap } from '../src/core/map-scanner.js';
 import type { CodeMap, Decisions, MapFile } from '../src/schema/index.js';
 
 const f = (file: string, extra: Partial<MapFile> = {}): MapFile => ({ file, lang: 'ts', lines: 100, ...extra });
@@ -126,5 +130,59 @@ describe('locateInMap', () => {
 
   it('honours the limit', () => {
     expect(locateInMap(map, 'src core commands utils', { limit: 2 })).toHaveLength(2);
+  });
+});
+
+describe('scanContent', () => {
+  let rootDir: string;
+  let fixtureMap: CodeMap;
+
+  beforeAll(async () => {
+    rootDir = await mkdtemp(join(tmpdir(), 'prelude-locate-content-'));
+    await mkdir(join(rootDir, 'src'), { recursive: true });
+    await mkdir(join(rootDir, 'tests'), { recursive: true });
+    // The word "invoice" appears only inside a function body, never in a name or path.
+    await writeFile(join(rootDir, 'src', 'ledger.ts'), 'export function post() {\n  // rounds each invoice line; Invoice totals are summed later\n  return 1;\n}\n');
+    await writeFile(join(rootDir, 'src', 'report.ts'), 'export function render() {\n  return "summary";\n}\n');
+    await writeFile(join(rootDir, 'tests', 'ledger.test.ts'), 'import { post } from "../src/ledger.js";\n// invoice fixtures\npost();\n');
+    fixtureMap = await buildMap(rootDir);
+  });
+
+  afterAll(async () => {
+    await rm(rootDir, { recursive: true, force: true });
+  });
+
+  it('finds a term that only appears inside a file body', async () => {
+    expect(locateInMap(fixtureMap, 'invoice rounding')).toEqual([]);
+
+    const content = await scanContent(rootDir, fixtureMap, 'invoice rounding');
+    expect(content.get('src/ledger.ts')?.get('invoice')).toBe(2);
+    expect(content.has('src/report.ts')).toBe(false);
+
+    const hits = locateInMap(fixtureMap, 'invoice rounding', {}, { content });
+    expect(hits[0].file).toBe('src/ledger.ts');
+    expect(hits[0].reasons).toContain('content invoice×2');
+  });
+
+  it('skips test files unless asked', async () => {
+    expect((await scanContent(rootDir, fixtureMap, 'invoice')).has('tests/ledger.test.ts')).toBe(false);
+    expect((await scanContent(rootDir, fixtureMap, 'invoice', { includeTests: true })).has('tests/ledger.test.ts')).toBe(true);
+  });
+
+  it('honours scope', async () => {
+    const content = await scanContent(rootDir, fixtureMap, 'invoice', { scope: 'tests', includeTests: true });
+    expect([...content.keys()]).toEqual(['tests/ledger.test.ts']);
+  });
+
+  it('ignores files the map lists but the disk no longer has', async () => {
+    const stale: CodeMap = JSON.parse(JSON.stringify(fixtureMap));
+    stale.modules[0].files.push({ file: 'src/gone.ts', lang: 'ts', lines: 1 });
+    await expect(scanContent(rootDir, stale, 'invoice')).resolves.toBeInstanceOf(Map);
+  });
+
+  it('keeps name matches ahead of a passing mention', async () => {
+    // report.ts is named for the query; ledger.ts would only match on content.
+    const content = await scanContent(rootDir, fixtureMap, 'report render');
+    expect(locateInMap(fixtureMap, 'report render', {}, { content })[0].file).toBe('src/report.ts');
   });
 });

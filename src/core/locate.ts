@@ -1,4 +1,5 @@
 import { join, posix } from 'path';
+import { readFile } from 'fs/promises';
 import { readJSON, fileExists } from '../utils/fs.js';
 import { CONTEXT_FILES } from '../constants.js';
 import { resolveContextDir } from '../runtime/context.js';
@@ -6,15 +7,16 @@ import type { CodeMap, Decisions, Architecture, MapFile, MapModule } from '../sc
 
 /**
  * locate — turn a task phrase into the handful of files most likely
- * relevant. Keyword scoring over map.json, plus architecture roles and
- * decisions that mention files. No embeddings, no network.
+ * relevant. Keyword scoring over map.json, plus architecture roles,
+ * decisions that mention files, and (when the caller supplies it) a scan of
+ * file contents for the query terms. No embeddings, no network.
  */
 
 export interface LocateHit {
   file: string;
   module: string;
   purpose?: string;
-  score: number;        // integer part from evidence, fractional part from rank
+  score: number;        // evidence points (names, paths, decisions, content) plus the file's rank
   rank?: number;
   importedBy?: number;
   exports?: string[];   // first 5
@@ -26,6 +28,13 @@ export interface LocateOptions {
   scope?: string;         // restrict to files under this directory
   includeTests?: boolean; // default: true only if the query mentions test/spec
 }
+
+// Content evidence: points per query term found in a file's contents, before
+// rarity weighting. Tuned with bench/locate-bench.ts; re-run it before changing.
+const CONTENT_BASE_POINTS = 6;
+const CONTENT_COUNT_SCALE = 1;
+const CONTENT_COUNT_CAP = 4;
+const CONTENT_MIN_WEIGHT = 0.2;
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'to', 'of', 'in', 'for', 'on', 'at', 'is', 'are', 'be', 'do', 'does',
@@ -80,6 +89,69 @@ interface FileIndex {
   roleTokens: Set<string>;
   moduleTokens: Set<string>;
   decisions: Array<{ title: string; tokens: Set<string> }>;
+}
+
+/** file → query token → number of occurrences in that file's contents. */
+export type ContentMatches = Map<string, Map<string, number>>;
+
+const CONTENT_MAX_BYTES = 512 * 1024;
+const CONTENT_READ_BATCH = 64;
+
+function wantsTests(tokens: string[]): boolean {
+  return tokens.some(t => t.startsWith('test') || t.startsWith('spec'));
+}
+
+function countOccurrences(haystack: string, needle: string): number {
+  let count = 0;
+  for (let i = haystack.indexOf(needle); i !== -1; i = haystack.indexOf(needle, i + needle.length)) count++;
+  return count;
+}
+
+/**
+ * Search the contents of every file in the map for the query terms
+ * (case-insensitive substring, like `grep -i -F`). The map only knows names;
+ * this finds words that live inside function bodies and comments.
+ * Best-effort: unreadable or oversized files are skipped.
+ */
+export async function scanContent(
+  rootDir: string,
+  map: CodeMap,
+  query: string,
+  opts: LocateOptions = {}
+): Promise<ContentMatches> {
+  const matches: ContentMatches = new Map();
+  const tokens = tokenize(query);
+  if (tokens.length === 0) return matches;
+
+  const includeTests = opts.includeTests ?? wantsTests(tokens);
+  const scope = opts.scope ? normalizeScope(opts.scope) : undefined;
+  const files: string[] = [];
+  for (const mod of map.modules) {
+    for (const f of mod.files) {
+      if (f.isTest && !includeTests) continue;
+      if (scope && !(f.file === scope || f.file.startsWith(scope + '/'))) continue;
+      files.push(f.file);
+    }
+  }
+
+  for (let i = 0; i < files.length; i += CONTENT_READ_BATCH) {
+    await Promise.all(files.slice(i, i + CONTENT_READ_BATCH).map(async file => {
+      try {
+        const buf = await readFile(join(rootDir, file));
+        if (buf.length > CONTENT_MAX_BYTES) return;
+        const text = buf.toString('utf-8').toLowerCase();
+        const counts = new Map<string, number>();
+        for (const t of tokens) {
+          const n = countOccurrences(text, t);
+          if (n > 0) counts.set(t, n);
+        }
+        if (counts.size > 0) matches.set(file, counts);
+      } catch {
+        // Stale map entry or unreadable file: the map evidence still applies
+      }
+    }));
+  }
+  return matches;
 }
 
 function normalizeScope(scope: string): string {
@@ -147,14 +219,26 @@ export function locateInMap(
   map: CodeMap,
   query: string,
   opts: LocateOptions = {},
-  extra: { decisions?: Decisions; architecture?: Architecture } = {}
+  extra: { decisions?: Decisions; architecture?: Architecture; content?: ContentMatches } = {}
 ): LocateHit[] {
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
 
   const limit = opts.limit ?? 8;
-  const includeTests = opts.includeTests ?? tokens.some(t => t.startsWith('test') || t.startsWith('spec'));
+  const includeTests = opts.includeTests ?? wantsTests(tokens);
   const scope = opts.scope ? normalizeScope(opts.scope) : undefined;
+
+  // A term found in most files says little; weight content matches by rarity.
+  const content = extra.content;
+  const contentWeight = new Map<string, number>();
+  if (content && content.size > 0) {
+    const total = map.modules.reduce((n, m) => n + m.files.length, 0) || 1;
+    for (const t of tokens) {
+      let df = 0;
+      for (const counts of content.values()) if (counts.has(t)) df++;
+      contentWeight.set(t, df === 0 ? 0 : Math.max(CONTENT_MIN_WEIGHT, Math.log(1 + total / df) / Math.log(1 + total)));
+    }
+  }
 
   const hits: LocateHit[] = [];
   for (const entry of buildIndex(map, extra.decisions, extra.architecture)) {
@@ -168,6 +252,7 @@ export function locateInMap(
       if (!reasons.includes(r)) reasons.push(r);
     };
     let tokensHit = 0;
+    const contentHits: string[] = [];
 
     for (const t of tokens) {
       let tokenPoints = 0;
@@ -221,9 +306,17 @@ export function locateInMap(
         }
       }
 
+      const occurrences = content?.get(file.file)?.get(t) ?? 0;
+      if (occurrences > 0) {
+        const weight = contentWeight.get(t) ?? 0;
+        tokenPoints += weight * (CONTENT_BASE_POINTS + Math.min(CONTENT_COUNT_CAP, Math.log2(1 + occurrences) * CONTENT_COUNT_SCALE));
+        contentHits.push(`${t}×${occurrences}`);
+      }
+
       if (tokenPoints > 0) tokensHit++;
       points += tokenPoints;
     }
+    if (contentHits.length > 0) addReason(`content ${contentHits.join(', ')}`);
 
     if (points === 0) continue;
     if (tokens.length > 1 && tokensHit === tokens.length) {
@@ -281,7 +374,8 @@ export async function loadLocateContext(rootDir: string): Promise<{
 
 export async function locate(rootDir: string, query: string, opts: LocateOptions = {}): Promise<LocateHit[]> {
   const { map, decisions, architecture } = await loadLocateContext(rootDir);
-  return locateInMap(map, query, opts, { decisions, architecture });
+  const content = await scanContent(rootDir, map, query, opts);
+  return locateInMap(map, query, opts, { decisions, architecture, content });
 }
 
 /** Plain-text rendering shared by the CLI and MCP tool. */

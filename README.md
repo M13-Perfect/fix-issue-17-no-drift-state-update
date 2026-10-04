@@ -240,7 +240,7 @@ prelude diff --check        # exit 1 on drift
 
 ### `prelude locate <query...>`
 
-Keyword scoring over `map.json` exports, paths, module purposes, architecture roles, and decisions that mention files.
+Scores every file on two kinds of evidence: what the map knows (exports, paths, module purposes, architecture roles, decisions that mention the file) and a scan of file contents for the query terms, weighted so rare terms count for more. Each result lists the reasons it was picked.
 
 ```bash
 prelude locate billing checkout webhook

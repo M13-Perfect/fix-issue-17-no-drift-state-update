@@ -1,7 +1,7 @@
 import type { CAC } from 'cac';
 import { resolve } from 'path';
 import { logger } from '../utils/log.js';
-import { loadLocateContext, locateInMap, formatLocateText } from '../core/locate.js';
+import { loadLocateContext, locateInMap, scanContent, formatLocateText } from '../core/locate.js';
 
 export function registerLocateCommand(cli: CAC) {
   cli
@@ -27,11 +27,13 @@ export function registerLocateCommand(cli: CAC) {
         process.exit(1);
       }
 
-      const hits = locateInMap(ctx.map, query, {
+      const opts = {
         limit: Number.isFinite(limit) && limit > 0 ? limit : 8,
         scope: options.scope,
         includeTests: options.tests ? true : undefined,
-      }, { decisions: ctx.decisions, architecture: ctx.architecture });
+      };
+      const content = await scanContent(rootDir, ctx.map, query, opts);
+      const hits = locateInMap(ctx.map, query, opts, { decisions: ctx.decisions, architecture: ctx.architecture, content });
 
       if (options.format === 'json') {
         console.log(JSON.stringify(hits, null, 2));

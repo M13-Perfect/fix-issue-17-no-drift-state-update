@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { join } from 'path';
 import { executeQuery, VALID_TYPES, truncateToTokenBudget, estimateTokens } from '../core/query-engine.js';
 import { exportCompact } from '../core/compact.js';
-import { loadLocateContext, locateInMap, formatLocateText, type LocateHit } from '../core/locate.js';
+import { loadLocateContext, locateInMap, scanContent, formatLocateText, type LocateHit } from '../core/locate.js';
 import { addDecision } from '../core/decisions.js';
 import { annotateModule, formatModuleLine, normalizeModulePath } from '../core/map-annotate.js';
 import { formatMapBody } from '../core/map-format.js';
@@ -133,7 +133,8 @@ async function locateAcrossProjects(
     } catch {
       continue; // no map in this project
     }
-    const hits = locateInMap(ctx.map, query, opts, { decisions: ctx.decisions, architecture: ctx.architecture });
+    const content = await scanContent(p.rootDir, ctx.map, query, opts);
+    const hits = locateInMap(ctx.map, query, opts, { decisions: ctx.decisions, architecture: ctx.architecture, content });
     for (const h of hits) all.push({ ...h, file: `${p.name}:${h.file}`, project: p.name });
   }
   all.sort((a, b) => b.score - a.score || (b.importedBy ?? 0) - (a.importedBy ?? 0) || (a.file < b.file ? -1 : 1));
@@ -276,6 +277,7 @@ export function createPreludeServer(options: ServerOptions | string): McpServer 
         const hits = locateInMap(ctx.map, query, locateOpts, {
           decisions: ctx.decisions,
           architecture: ctx.architecture,
+          content: await scanContent(p.rootDir, ctx.map, query, locateOpts),
         });
         return text(formatLocateText(hits, query, ctx.map), {
           hits: workspaceMode ? hits.map(h => ({ ...h, project: p.name })) : hits,

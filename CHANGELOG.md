@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `prelude locate` and `prelude_locate` now also search file contents for the query terms and blend that with the map evidence, weighting rare terms higher. Results gain a `content term×count` reason. On the git-history benchmark (`bench/locate-bench.ts`, six repositories) hit@8 rises from 55% to 87% on average, against 82% for a ranked grep.
+
 ## 1.9.1 — 2026-10-04
 
 ### Added

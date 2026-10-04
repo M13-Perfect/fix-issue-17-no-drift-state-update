@@ -5,11 +5,12 @@
  * files that commit changed are the expected answer. The repo is checked out
  * at the commit's parent, so neither method sees the change itself.
  *
- *   locate   buildMap() + locateInMap(), top N
+ *   locate   buildMap() + scanContent() + locateInMap(), top N
+ *            (--map-only skips the content scan: names and paths only)
  *   grep     `git grep -i -c` per query token over the same source files,
  *            ranked by distinct tokens matched, then total matches, top N
  *
- * Usage: tsx bench/locate-bench.ts <repo-dir>... [--commits 100] [--limit 8] [--json]
+ * Usage: tsx bench/locate-bench.ts <repo-dir>...  [--commits 100] [--limit 8] [--map-only] [--json]
  *
  * The target repos are left on a detached HEAD at their original commit.
  */
@@ -17,7 +18,7 @@ import { execFileSync } from 'child_process';
 import { existsSync } from 'fs';
 import { join, resolve, basename } from 'path';
 import { buildMap } from '../src/core/map-scanner.js';
-import { locateInMap, tokenize } from '../src/core/locate.js';
+import { locateInMap, scanContent, tokenize } from '../src/core/locate.js';
 import { isTestFile } from '../src/core/source-scanner.js';
 
 const SOURCE_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.rs'];
@@ -133,7 +134,7 @@ function summarize(scores: Score[]) {
   };
 }
 
-async function benchRepo(repo: string, commits: number, limit: number) {
+async function benchRepo(repo: string, commits: number, limit: number, mapOnly: boolean) {
   const original = git(repo, ['rev-parse', 'HEAD']).trim();
   const samples = sampleCommits(repo, commits);
   const locateScores: Score[] = [];
@@ -146,7 +147,9 @@ async function benchRepo(repo: string, commits: number, limit: number) {
       git(repo, ['checkout', '-q', '--detach', `${sample.sha}^`]);
       const map = await buildMap(repo);
       sourceFiles += map.stats.files;
-      const hits = locateInMap(map, sample.query, { limit, includeTests: false });
+      const opts = { limit, includeTests: false };
+      const content = mapOnly ? undefined : await scanContent(repo, map, sample.query, opts);
+      const hits = locateInMap(map, sample.query, opts, { content });
       locateScores.push(score(hits.map(h => h.file), sample.expected));
 
       const grep = grepRank(repo, sample.query, limit);
@@ -194,7 +197,7 @@ async function main() {
       console.error(`${repo}: not a git repository, skipped`);
       continue;
     }
-    results.push(await benchRepo(dir, commits, limit));
+    results.push(await benchRepo(dir, commits, limit, args.includes('--map-only')));
   }
 
   if (asJson) {

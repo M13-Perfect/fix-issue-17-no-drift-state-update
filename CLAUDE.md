@@ -28,7 +28,7 @@ src/core/                   Business logic
   vocab.ts                  Shared directory-name → purpose vocabulary (architecture.json and map.json)
   map-format.ts             Map filters and formatters shared by query, compact, export, CLAUDE.md/AGENTS.md
   map-annotate.ts           annotateModule(): manual module purpose/notes in map.json
-  locate.ts                 Keyword scoring over map.json + decisions → the files to read for a task
+  locate.ts                 Scoring over map.json + decisions + a content scan (scanContent) → the files to read for a task
   diff.ts                   computeDiff(): what prelude update would change; shared by update and diff
   decisions.ts              addDecision()/listDecisions() for decisions.json
   workspace.ts              User-level workspace registry and index (~/.prelude)
@@ -60,7 +60,7 @@ bench/locate-bench.ts       Retrieval benchmark for locate: git history as queri
 `prelude query` → `query-engine.ts` reads `.context/*.json` → filters by topic/scope/type → stdout
 `prelude compact` → `query-engine.ts` `exportCompact()` → token-budgeted one-liner-per-section → stdout
 `prelude init` / `update` also → `map-scanner.ts` `buildMap()` → `merger.ts` `mergeMap()` → `.context/map.json`
-`prelude locate` → `locate.ts` reads `map.json` + `decisions.json` + `architecture.json` → ranked files with reasons → stdout
+`prelude locate` → `locate.ts` reads `map.json` + `decisions.json` + `architecture.json`, scans the mapped files for the query terms → ranked files with reasons → stdout
 `prelude diff` → `diff.ts` `computeDiff()` (same read/infer/merge as update, no writes) → drift → stdout / exit code
 `prelude workspace` → `workspace.ts` → `~/.prelude/workspace.json` (registry) + `index.json` (generated) → `prelude serve --workspace`
 
