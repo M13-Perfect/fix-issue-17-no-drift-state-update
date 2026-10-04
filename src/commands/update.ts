@@ -53,8 +53,6 @@ export async function update(options: UpdateOptions = {}) {
       // Rank/export churn is not drift, but keep map.json current
       if (!options.dryRun && merged.map && inferred.map) {
         await writeJSON(join(contextDir, CONTEXT_FILES.MAP), merged.map);
-        trackMapFields(stateManager, merged.map, inferred.map);
-        stateManager.save();
       }
       logger.success('Context is up to date, no changes needed');
       return;
